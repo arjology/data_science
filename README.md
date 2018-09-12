@@ -36,6 +36,9 @@ This is the start of a longer exploratory project, but in the meantime I have be
 The data is all freely available but just takes some tweeking.
 The [jupyter notebook](https://github.com/arjology/data_science/blob/master/US%20voting%20and%20census.ipynb) has all the steps for the downloading and processing of the various data sources. 
 
+There is of course some correlation between the population density, as well as gender-specific populations, and the spread (i.e. (votes_dem - votes_rep)/tot_votes)
+![Pops vs Spread](https://github.com/arjology/data_science/blob/master/figures/US_voting_spread_vols_vs_pop_density.png)
+
 Let's take a look first at the results, colered in each state at the county level:
 
 ![Percent Democrat and Republican](https://github.com/arjology/data_science/blob/master/figures/US_voting_pct_gop_dem.png) 
