@@ -2,7 +2,7 @@
 1. [Introduction](#introduction)
 2. [Linear Regression](#linearregression)
 3. [Random Forrests and Gradient Boosting](#gradientboosting)
-4. [Loan Predictions with XGBoost](#loans)
+4. [Predicting Loan Application Approvals with XGBoost](#loans)
 
 ## Introduction <a name="introduction"></a>
 Random data science projects. More to come...
@@ -50,7 +50,7 @@ There is a clear difference between the central states and the coasts (and hence
 Ultimately, a simple random forrest had enough predictive power given the various demographic breakdowns of each county. But we can still do better.
 ![Random forrest predictions](https://github.com/arjology/data_science/blob/master/figures/US_voting_RF_binary_classification.png)
 
-## Loans  <a name="linearregression"></a>
+## Predicting Loan Applications with XGBoost  <a name="loans"></a>
 
 ### Problem Statement
 #### About Company
