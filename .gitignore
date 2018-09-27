@@ -8,6 +8,8 @@ dropbox.txt
 dropbox_upload.py
 
 # IDE files
+.iml
+*/target/
 .vs
 .vscode
 .idea
