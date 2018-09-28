@@ -8,6 +8,7 @@ dropbox.txt
 dropbox_upload.py
 
 # IDE files
+metastore/
 .iml
 */target/
 .vs
