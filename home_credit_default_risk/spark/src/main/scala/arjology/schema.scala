@@ -132,6 +132,9 @@ object schema {
       StructField("CREDIT_TYPE_Loan_for_the_purchase_of_equipment_count_norm", FloatType, nullable = true) ::
       StructField("CREDIT_TYPE_Loan_for_working_capital_replenishment_count", FloatType, nullable = true) ::
       StructField("CREDIT_TYPE_Loan_for_working_capital_replenishment_count_norm", FloatType, nullable = true) ::
+      Nil)
+
+  val schemaPart2 = StructType(
       StructField("CREDIT_TYPE_Microloan_count", FloatType, nullable = true) ::
       StructField("CREDIT_TYPE_Microloan_count_norm", FloatType, nullable = true) ::
       StructField("CREDIT_TYPE_Mobile_operator_loan_count", FloatType, nullable = true) ::
@@ -177,7 +180,7 @@ object schema {
       StructField("bureau_AMT_ANNUITY_min", FloatType, nullable = true) ::
       Nil)
 
-  val schemaPart2 = StructType(
+  val schemaPart3 = StructType(
     StructField("client_bureau_balance_MONTHS_BALANCE_count_mean", FloatType, nullable = true) ::
       StructField("client_bureau_balance_MONTHS_BALANCE_count_min", FloatType, nullable = true) ::
       StructField("client_bureau_balance_MONTHS_BALANCE_max_mean", FloatType, nullable = true) ::
@@ -223,6 +226,9 @@ object schema {
       StructField("client_bureau_balance_STATUS_X_count_norm_mean", FloatType, nullable = true) ::
       StructField("client_bureau_balance_STATUS_X_count_norm_max", FloatType, nullable = true) ::
       StructField("client_bureau_balance_STATUS_X_count_norm_min", FloatType, nullable = true) ::
+      Nil)
+
+  val schemaPart4 = StructType(
       StructField("credit_card_balance_NAME_CONTRACT_STATUS_Active_count", FloatType, nullable = true) ::
       StructField("credit_card_balance_NAME_CONTRACT_STATUS_Active_count_norm", FloatType, nullable = true) ::
       StructField("credit_card_balance_NAME_CONTRACT_STATUS_Approved_count", FloatType, nullable = true) ::
@@ -298,7 +304,7 @@ object schema {
       StructField("POS_cash_balance_SK_DPD_DEF_min", FloatType, nullable = true) ::
       Nil)
 
-  val schemaPart3 = StructType(
+  val schemaPart5 = StructType(
     StructField("installments_payments_NUM_INSTALMENT_VERSION_count", FloatType, nullable = true) ::
       StructField("installments_payments_NUM_INSTALMENT_VERSION_mean", FloatType, nullable = true) ::
       StructField("installments_payments_NUM_INSTALMENT_VERSION_max", FloatType, nullable = true) ::
@@ -364,6 +370,9 @@ object schema {
       StructField("previous_application_NAME_CASH_LOAN_PURPOSE_Money_for_a_third_person_count", FloatType, nullable = true) ::
       StructField("previous_application_NAME_CASH_LOAN_PURPOSE_Money_for_a_third_person_count_norm", FloatType, nullable = true) ::
       StructField("previous_application_NAME_CASH_LOAN_PURPOSE_Other_count", FloatType, nullable = true) ::
+      Nil)
+
+  val schemaPart6 = StructType(
       StructField("previous_application_NAME_CASH_LOAN_PURPOSE_Other_count_norm", FloatType, nullable = true) ::
       StructField("previous_application_NAME_CASH_LOAN_PURPOSE_Payments_on_other_loans_count", FloatType, nullable = true) ::
       StructField("previous_application_NAME_CASH_LOAN_PURPOSE_Payments_on_other_loans_count_norm", FloatType, nullable = true) ::
@@ -426,7 +435,7 @@ object schema {
       StructField("previous_application_NAME_GOODS_CATEGORY_Additional_Service_count_norm", FloatType, nullable = true) ::
       Nil)
 
-  val schemaPart4 = StructType(
+  val schemaPart7 = StructType(
     StructField("previous_application_NAME_GOODS_CATEGORY_Animals_count", FloatType, nullable = true) ::
       StructField("previous_application_NAME_GOODS_CATEGORY_Audio_Video_count", FloatType, nullable = true) ::
       StructField("previous_application_NAME_GOODS_CATEGORY_Audio_Video_count_norm", FloatType, nullable = true) ::
@@ -467,6 +476,9 @@ object schema {
       StructField("previous_application_NAME_GOODS_CATEGORY_Office_Appliances_count", FloatType, nullable = true) ::
       StructField("previous_application_NAME_GOODS_CATEGORY_Office_Appliances_count_norm", FloatType, nullable = true) ::
       StructField("previous_application_NAME_GOODS_CATEGORY_Other_count", FloatType, nullable = true) ::
+      Nil)
+
+  val schemaPart8 = StructType(
       StructField("previous_application_NAME_GOODS_CATEGORY_Other_count_norm", FloatType, nullable = true) ::
       StructField("previous_application_NAME_GOODS_CATEGORY_Photo___Cinema_Equipment_count", FloatType, nullable = true) ::
       StructField("previous_application_NAME_GOODS_CATEGORY_Photo___Cinema_Equipment_count_norm", FloatType, nullable = true) ::
@@ -519,7 +531,7 @@ object schema {
       StructField("previous_application_NAME_YIELD_GROUP_middle_count_norm", FloatType, nullable = true) ::
       Nil)
 
-  val schemaPart5 = StructType(
+  val schemaPart9 = StructType(
     StructField("previous_application_PRODUCT_COMBINATION_Card_X_Sell_count", FloatType, nullable = true) ::
       StructField("previous_application_PRODUCT_COMBINATION_Cash_Street__high_count", FloatType, nullable = true) ::
       StructField("previous_application_PRODUCT_COMBINATION_Cash_Street__high_count_norm", FloatType, nullable = true) ::
@@ -580,8 +592,8 @@ object schema {
       Nil
   )
 
-  val trainSchema: StructType = StructType(trainSchemaHeader ++ schemaPart0 ++ schemaPart1 ++ schemaPart2 ++ schemaPart3 ++ schemaPart4 ++ schemaPart5)
-  val testSchema: StructType = StructType(testSchemaHeader ++ schemaPart0 ++ schemaPart1 ++ schemaPart2 ++ schemaPart3 ++ schemaPart4 ++ schemaPart5)
+  val trainSchema: StructType = StructType(trainSchemaHeader ++ schemaPart0 ++ schemaPart1 ++ schemaPart2 ++ schemaPart3 ++ schemaPart4 ++ schemaPart5 ++ schemaPart6 ++ schemaPart7 ++ schemaPart8 ++ schemaPart9)
+  val testSchema: StructType = StructType(testSchemaHeader ++ schemaPart0 ++ schemaPart1 ++ schemaPart2 ++ schemaPart3 ++ schemaPart4 ++ schemaPart5 ++ schemaPart6 ++ schemaPart7 ++ schemaPart8 ++ schemaPart9)
 
   def encodeStringColumns(inputDF: DataFrame):DataFrame = {
     var dfIndexed: DataFrame = inputDF
@@ -638,7 +650,4 @@ object schema {
 
     dfIndexed
   }
-
-
-
 }
