@@ -15,6 +15,7 @@ metastore/
 .vscode
 .idea
 .project
+.code-workspace
 env/
 
 # OS files
