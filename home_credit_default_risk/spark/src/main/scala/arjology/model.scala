@@ -5,11 +5,14 @@ import java.io.File
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.functions.udf
 import org.apache.spark.ml.feature.{Imputer, VectorAssembler}
 import org.apache.spark.ml.classification.GBTClassifier
+import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
 
 import arjology.schema.{encodeStringColumns, testSchema, trainSchema}
+
 
 object model {
 
@@ -68,13 +71,20 @@ object model {
 
     // Predict test labels
     val t2 = System.currentTimeMillis()
-    val full_model_output:DataFrame = assembler.transform(testIndexedDFImputed.drop("SK_ID_CURR"))
-    val predictions:DataFrame  = model.transform(full_model_output.select("FEATS"))
-    predictions
-      .select("SK_ID_CURR", "TARGET")
-      .coalesce(1)
-      .write.csv(output)
+    val full_model_output:DataFrame = assembler.transform(testIndexedDFImputed)
+    val predictions:DataFrame  = model.transform(full_model_output)
     val t3 = System.currentTimeMillis()
     println(s"Prediction phase took ${(t3 - t2)/1000} seconds")
+
+    val vecToSeq = udf((v: Vector) => v.toArray)
+    predictions.select("SK_ID_CURR", "probability")
+      .withColumn("TARGET", vecToSeq($"probability").getItem(0))
+      .select("SK_ID_CURR", "TARGET")
+      .coalesce(1)
+      .write
+      .format("com.databricks.spark.csv")
+      .option("header", "true")
+      .option("delimiter",",")
+      .csv(output)
   }
 }

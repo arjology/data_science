@@ -1,19 +1,19 @@
 package arjology
 
-import org.apache.spark.sql.types.{StringType, FloatType, StructType, StructField}
+import org.apache.spark.sql.types.{StringType, FloatType, StructType, StructField, IntegerType}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.ml.feature.StringIndexer
 
 object schema {
 
   val trainSchemaHeader = StructType(
-    StructField("SK_ID_CURR", FloatType, nullable = true) ::
+    StructField("SK_ID_CURR", IntegerType, nullable = true) ::
       StructField("TARGET", FloatType, nullable = true) ::
       Nil
   )
 
   val testSchemaHeader = StructType(
-    StructField("SK_ID_CURR", FloatType, nullable = true) ::
+    StructField("SK_ID_CURR", IntegerType, nullable = true) ::
       Nil
   )
 
