@@ -1,0 +1,1 @@
+[Jupyter notebook](https://github.com/arjology/data_science/blob/master/PGM/Probabilistic%20Graphical%20Models.ipynb)

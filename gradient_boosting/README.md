@@ -1,1 +1,1 @@
-[Jupyter notebook](https://github.com/arjology/data_science/gradient_boosting/learning%20gradient%20boosting%20from%20scratch.ipynb)
+[Jupyter notebook](https://github.com/arjology/data_science/blob/master/gradient_boosting/learning%20gradient%20boosting%20from%20scratch.ipynb)

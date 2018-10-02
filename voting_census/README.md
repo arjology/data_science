@@ -5,7 +5,7 @@ The 2016 U.S. Presidential elections were nothing short of spectacular failures 
 This is the start of a longer exploratory project, but in the meantime I have been playing with random forrests and gradient boosting techniques.
 
 The data is all freely available but just takes some tweeking.
-The [jupyter notebook](https://github.com/arjology/data_science/blob/master/US%20voting%20and%20census.ipynb) has all the steps for the downloading and processing of the various data sources. 
+The [jupyter notebook](https://github.com/arjology/data_science/blob/master/voting_census/US%20voting%20and%20census.ipynb) has all the steps for the downloading and processing of the various data sources. 
 
 There is of course some correlation between the population density, as well as gender-specific populations, and the spread (i.e. (votes_dem - votes_rep)/tot_votes)
 ![Pops vs Spread](https://github.com/arjology/data_science/blob/master/figures/US_voting_spread_vols_vs_pop_density.png)

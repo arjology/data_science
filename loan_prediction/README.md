@@ -1,6 +1,6 @@
 ## Predicting Loan Applications with XGBoost  <a name="loans"></a>
 
-![Jupyter notebook](https://github.com/arjology/data_science/loan_prediction/loan_prediction.ipynb)
+![Jupyter notebook](https://github.com/arjology/data_science/blob/master/loan_prediction/loan_prediction.ipynb)
 
 ### Problem Statement
 #### About Company
