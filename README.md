@@ -6,7 +6,7 @@
 5. [Predicting Loan Application Approvals with XGBoost](https://github.com/arjology/data_science/tree/master/loan_prediction)
 6. [Home Credit Default Risk](https://github.com/arjology/data_science/tree/master/home_credit_default_risk)
 7. [Markov Clustering](https://github.com/arjology/data_science/tree/master/markov_clustering)
-8. [Probabilistic Graphical Models](https://github.com/arjology/tree/master/data_science/PGM)
+8. [Probabilistic Graphical Models](https://github.com/arjology/data_science/tree/master/PGM)
 
 ## Introduction <a name="introduction"></a>
 Random data science projects. More to come...

@@ -1,4 +1,4 @@
-## PySpark, MLlib, and Linear Regression
+# PySpark, MLlib, and Linear Regression
 
 Here I am using Apache Spark’s spark.ml Linear Regression to predicting Boston housing prices. 
 The data is from the [Kaggle competition: Housing Values in Suburbs of Boston](https://www.kaggle.com/c/boston-housing/data). 
