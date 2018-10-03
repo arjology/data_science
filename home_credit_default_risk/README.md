@@ -251,3 +251,11 @@ feature	importance
 
 ### Save results and done!
 submission.to_csv("submission.csv", index=False)
+
+### Results
+
+Submitting to the Kaggle competion:
+`kaggle competitions submit -c home-credit-default-risk -f submission.csv -m "irst submission with LightGB"`
+
+Private score: `0.77583`
+Public score: `0.77499`
