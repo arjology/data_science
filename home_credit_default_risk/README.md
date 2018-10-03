@@ -1,11 +1,21 @@
 # Home Credit Default Risk
 
-## Introduction
+## Table of Contents
+1. [Introduction](introduction)
+2. [LightGB](lightgb)
+3. [XGBoost](xgboost)
+4. [Apache Spark](spark)
+5. [Results](results)
+
+
+# Introduction <a name="introduction"></a>
 
 Using alternatives to credit histories, can we predict the ability of a borrower to repay a loan ? 
 [Kaggle competition](https://www.kaggle.com/c/home-credit-default-risk/overview)
 
 Exploratory analysis has been done in the [Jupyter notebook](https://github.com/arjology/data_science/blob/master/home_credit_default_risk/home_credit_default_risk.ipynb)
+
+# LightGB <a name="lightgb"></a>
 
 ## Application data
 
@@ -252,10 +262,22 @@ feature	importance
 ### Save results and done!
 submission.to_csv("submission.csv", index=False)
 
-### Results
+# XGBoost <a href="xgboost"></a>
 
-Submitting to the Kaggle competion:
-`kaggle competitions submit -c home-credit-default-risk -f submission.csv -m "irst submission with LightGB"`
+![xgb_coors](https://github.com/arjology/data_science/blob/master/figures/home_credit_xgb_corrs.png)
 
+Correlation plot from XG Boost
+![xgb_coors](https://github.com/arjology/data_science/blob/master/figures/home_credit_xgb_corrs.png)
+
+# Results <a href="results"></a>
+
+## LightGB
 Private score: `0.77583`
 Public score: `0.77499`
+
+## XGBoost
+Private score: `0.74768`
+Public score: `0.75189`
+
+## Spark
+

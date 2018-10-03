@@ -226,3 +226,277 @@ test_corrs_removed = test.drop(columns = cols_to_remove)
 #############################
 ### Modeling with LightGB ###
 #############################
+def model(features, test_features, encoding = 'ohe', n_folds = 5):
+    
+    """Train and test a light gradient boosting model using
+    cross validation. 
+    
+    Parameters
+    --------
+        features (pd.DataFrame): 
+            dataframe of training features to use 
+            for training a model. Must include the TARGET column.
+        test_features (pd.DataFrame): 
+            dataframe of testing features to use
+            for making predictions with the model. 
+        encoding (str, default = 'ohe'): 
+            method for encoding categorical variables. Either 'ohe' for one-hot encoding or 'le' for integer label encoding
+            n_folds (int, default = 5): number of folds to use for cross validation
+        
+    Return
+    --------
+        submission (pd.DataFrame): 
+            dataframe with `SK_ID_CURR` and `TARGET` probabilities
+            predicted by the model.
+        feature_importances (pd.DataFrame): 
+            dataframe with the feature importances from the model.
+        valid_metrics (pd.DataFrame): 
+            dataframe with training and validation metrics (ROC AUC) for each fold and overall.
+        
+    """
+    
+    # Extract the ids
+    train_ids = features['SK_ID_CURR']
+    test_ids = test_features['SK_ID_CURR']
+    
+    # Extract the labels for training
+    labels = features['TARGET']
+    
+    # Remove the ids and target
+    features = features.drop(columns = ['SK_ID_CURR', 'TARGET'])
+    test_features = test_features.drop(columns = ['SK_ID_CURR'])
+    
+    
+    # One Hot Encoding
+    if encoding == 'ohe':
+        features = pd.get_dummies(features)
+        test_features = pd.get_dummies(test_features)
+        
+        # Align the dataframes by the columns
+        features, test_features = features.align(test_features, join = 'inner', axis = 1)
+        
+        # No categorical indices to record
+        cat_indices = 'auto'
+    
+    # Integer label encoding
+    elif encoding == 'le':
+        
+        # Create a label encoder
+        label_encoder = LabelEncoder()
+        
+        # List for storing categorical indices
+        cat_indices = []
+        
+        # Iterate through each column
+        for i, col in enumerate(features):
+            if features[col].dtype == 'object':
+                # Map the categorical features to integers
+                features[col] = label_encoder.fit_transform(np.array(features[col].astype(str)).reshape((-1,)))
+                test_features[col] = label_encoder.transform(np.array(test_features[col].astype(str)).reshape((-1,)))
+
+                # Record the categorical indices
+                cat_indices.append(i)
+    
+    # Catch error if label encoding scheme is not valid
+    else:
+        raise ValueError("Encoding must be either 'ohe' or 'le'")
+        
+    print('Training Data Shape: ', features.shape)
+    print('Testing Data Shape: ', test_features.shape)
+    
+    # Extract feature names
+    feature_names = list(features.columns)
+    
+    # Convert to np arrays
+    features = np.array(features)
+    test_features = np.array(test_features)
+    
+    # Create the kfold object
+    k_fold = model_selection.KFold(n_splits = n_folds, shuffle = False, random_state = 50)
+    
+    # Empty array for feature importances
+    feature_importance_values = np.zeros(len(feature_names))
+    
+    # Empty array for test predictions
+    test_predictions = np.zeros(test_features.shape[0])
+    
+    # Empty array for out of fold validation predictions
+    out_of_fold = np.zeros(features.shape[0])
+    
+    # Lists for recording validation and training scores
+    valid_scores = []
+    train_scores = []
+    
+    # Iterate through each fold
+    for train_indices, valid_indices in k_fold.split(features):
+        
+        # Training data for the fold
+        train_features, train_labels = features[train_indices], labels[train_indices]
+        # Validation data for the fold
+        valid_features, valid_labels = features[valid_indices], labels[valid_indices]
+        
+        # Create the model
+        model = lgb.LGBMClassifier(n_estimators=10000, objective = 'binary', 
+                                   class_weight = 'balanced', learning_rate = 0.05, 
+                                   reg_alpha = 0.1, reg_lambda = 0.1, 
+                                   subsample = 0.8, n_jobs = -1, random_state = 50)
+        
+        # Train the model
+        model.fit(train_features, train_labels, eval_metric = 'auc',
+                  eval_set = [(valid_features, valid_labels), (train_features, train_labels)],
+                  eval_names = ['valid', 'train'], categorical_feature = cat_indices,
+                  early_stopping_rounds = 100, verbose = 200)
+        
+        # Record the best iteration
+        best_iteration = model.best_iteration_
+        
+        # Record the feature importances
+        feature_importance_values += model.feature_importances_ / k_fold.n_splits
+        
+        # Make predictions
+        test_predictions += model.predict_proba(test_features, num_iteration = best_iteration)[:, 1] / k_fold.n_splits
+        
+        # Record the out of fold predictions
+        out_of_fold[valid_indices] = model.predict_proba(valid_features, num_iteration = best_iteration)[:, 1]
+        
+        # Record the best score
+        valid_score = model.best_score_['valid']['auc']
+        train_score = model.best_score_['train']['auc']
+        
+        valid_scores.append(valid_score)
+        train_scores.append(train_score)
+        
+        # Clean up memory
+        gc.enable()
+        del model, train_features, valid_features
+        gc.collect()
+        
+    # Make the submission dataframe
+    submission = pd.DataFrame({'SK_ID_CURR': test_ids, 'TARGET': test_predictions})
+    
+    # Make the feature importance dataframe
+    feature_importances = pd.DataFrame({'feature': feature_names, 'importance': feature_importance_values})
+    
+    # Overall validation score
+    valid_auc = roc_auc_score(labels, out_of_fold)
+    
+    # Add the overall scores to the metrics
+    valid_scores.append(valid_auc)
+    train_scores.append(np.mean(train_scores))
+    
+    # Needed for creating dataframe of validation scores
+    fold_names = list(range(n_folds))
+    fold_names.append('overall')
+    
+    # Dataframe of validation scores
+    metrics = pd.DataFrame({'fold': fold_names,
+                            'train': train_scores,
+                            'valid': valid_scores}) 
+    
+    return submission, feature_importances, metrics
+
+submission, fi, metrics = model(train_corrs_removed, test_corrs_removed)
+
+#############################
+### Modeling with XGBoost ###
+#############################
+features = train_corrs_removed
+test_features = test_corrs_removed
+
+# Extract the ids
+train_ids = features['SK_ID_CURR']
+test_ids = test_features['SK_ID_CURR']
+
+# Extract the labels for training
+labels = features['TARGET']
+
+# Remove the ids and target
+features = features.drop(columns = ['SK_ID_CURR', 'TARGET'])
+test_features = test_features.drop(columns = ['SK_ID_CURR'])
+
+# Create a label encoder
+label_encoder = LabelEncoder()
+
+# List for storing categorical indices
+cat_indices = []
+
+# Iterate through each column
+for i, col in enumerate(features):
+    if features[col].dtype == 'object':
+        # Map the categorical features to integers
+        features[col] = label_encoder.fit_transform(np.array(features[col].astype(str)).reshape((-1,)))
+        test_features[col] = label_encoder.transform(np.array(test_features[col].astype(str)).reshape((-1,)))
+
+        # Record the categorical indices
+        cat_indices.append(i)
+
+imp = Imputer(missing_values=np.nan, strategy='mean')
+
+imp = imp.fit(features)
+features_imputed = imp.transform(features)
+
+imp = imp.fit(test_features)
+test_features_imputed = imp.transform(test_features)        
+
+# Extract feature names
+feature_names = list(features.columns)
+
+# Convert to np arrays
+features = np.array(features_imputed)
+test_features = np.array(test_features_imputed)
+
+# Empty array for feature importances
+feature_importance_values = np.zeros(len(feature_names))
+
+# Empty array for test predictions
+test_predictions = np.zeros(test_features_imputed.shape[0])
+
+params = {'scale_pos_weight':1,
+          'learning_rate':0.5,  
+          'colsample_bytree':0.5,
+          'subsample':.8,
+          'objective':'binary:logistic', 
+          'n_estimators':1000, 
+          'reg_lambda':1,
+          'max_depth':2, 
+          'gamma':1,
+          'alpha':1
+         }
+data_dmatrix = xgb.DMatrix(data=features_imputed,label=labels)
+cv_results = xgb.cv(dtrain=data_dmatrix, params=params, nfold=3, 
+                    num_boost_round=50,early_stopping_rounds=10,metrics="rmse", as_pandas=True, seed=123)
+
+def rmsle_eval(y, y0):
+    
+    y0=y0.get_label()    
+    assert len(y) == len(y0)
+    return 'error',np.sqrt(np.mean(np.power(np.log1p(y)-np.log1p(y0), 2)))
+
+params = {'scale_pos_weight':1,
+          'learning_rate':0.5,  
+          'colsample_bytree':0.5,
+          'subsample':.8,
+          'objective':'binary:logistic', 
+          'n_estimators':1000, 
+          'reg_lambda':1,
+          'max_depth':2, 
+          'gamma':1,
+          'alpha':1,
+          'silent': 1,
+          'n_jobs': -1
+          
+         }
+watchlist  = [(data_dmatrix,'train')]
+xg_reg = xgb.train(params=params,
+                   dtrain=data_dmatrix,
+                   num_boost_round=1000, 
+                   evals=watchlist,
+                   feval=rmsle_eval,
+                   early_stopping_rounds=50)
+
+
+pred_dmatrix = xgb.DMatrix(data=test_features_imputed)
+test_predictions = xg_reg.predict(pred_dmatrix)
+
+submission = pd.DataFrame({'SK_ID_CURR': test_ids, 'TARGET': test_predictions})
+submission.to_csv('submission_xgboost.csv', index = False)
