@@ -279,7 +279,7 @@ Using Scikit-Learn's XGBoost with the following parameters:
 'alpha':1
 ```
 
-![xgb_coors](https://github.com/arjology/data_science/blob/master/figures/home_credit_xgb_corrs.png)
+![xgb_graph](https://github.com/arjology/data_science/blob/master/figures/home_credit_xgb_graph.png)
 
 Correlation plot from XG Boost
 ![xgb_coors](https://github.com/arjology/data_science/blob/master/figures/home_credit_xgb_corrs.png)
