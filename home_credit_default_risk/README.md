@@ -1,11 +1,11 @@
 # Home Credit Default Risk
 
 ## Table of Contents
-1. [Introduction](introduction)
-2. [LightGB](lightgb)
-3. [XGBoost](xgboost)
-4. [Apache Spark](spark)
-5. [Results](results)
+1. [Introduction](#introduction)
+2. [LightGB](#lightgb)
+3. [XGBoost](#xgboost)
+4. [Apache Spark](#spark)
+5. [Results](#results)
 
 
 ## Introduction <a name="introduction"></a>
