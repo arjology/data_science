@@ -8,22 +8,22 @@
 5. [Results](results)
 
 
-# Introduction <a name="introduction"></a>
+## Introduction <a name="introduction"></a>
 
 Using alternatives to credit histories, can we predict the ability of a borrower to repay a loan ? 
 [Kaggle competition](https://www.kaggle.com/c/home-credit-default-risk/overview)
 
 Exploratory analysis has been done in the [Jupyter notebook](https://github.com/arjology/data_science/blob/master/home_credit_default_risk/home_credit_default_risk.ipynb)
 
-# LightGB <a name="lightgb"></a>
+## LightGB <a name="lightgb"></a>
 
-## Application data
+### Application data
 
-### Correlations within the first data set
+#### Correlations within the first data set
 
 ![correlations](https://github.com/arjology/data_science/blob/master/figures/home_credit_application_train_corr_heatmap.png)
 
-### Exploring feature importance
+#### Exploring feature importance
 
 A small random forrest can gives us insights into which features are most important from this dataset. Normalized scores from external sources are ranked quite high.
 
@@ -56,7 +56,7 @@ What about including information from the bureau statistics? The most important 
 
 ![bureau_stats_diff](https://github.com/arjology/data_science/blob/master/figures/home_credit_bureau_stats_diff.png)
 
-### Categorical Data
+#### Categorical Data
 
 Of course, we expect a certain amount of the information to be non-numeric in type:
 
@@ -159,7 +159,7 @@ credit_card_balance_AMT_DRAWINGS_OTHER_CURRENT_min	37690	77.0
 credit_card_balance_AMT_PAYMENT_CURRENT_min	37684	77.0
 ```
 
-### Most correlated columns
+#### Most correlated columns
 
 Columns with the most positive correlations to the target:
 
@@ -196,11 +196,11 @@ EXT_SOURCE_3	-0.178919
 
 ![pos_neg_corrs](https://github.com/arjology/data_science/blob/master/figures/home_credit_pos_neg_corrs.png)
 
-### Colinearity
+#### Colinearity
 
 Columns that are above a threshold of 0.8 we can remove (396 co-linear columns in total), leaving us with 545 columns.
 
-## Using Gradient Boosting with LightGB
+### Using Gradient Boosting with LightGB
 
 Running the model:
 
@@ -234,7 +234,7 @@ Early stopping, best iteration is:
 [481]	valid's auc: 0.78225	valid's binary_logloss: 0.506862	train's auc: 0.87286	train's binary_logloss: 0.477572
 ```
 
-### Feature importance
+#### Feature importance
 We see the following features in order of importance:
 
 ```
@@ -262,22 +262,37 @@ feature	importance
 ### Save results and done!
 submission.to_csv("submission.csv", index=False)
 
-# XGBoost <a href="xgboost"></a>
+## XGBoost <a href="xgboost"></a>
+
+Using Scikit-Learn's XGBoost with the following parameters:
+
+```
+'scale_pos_weight':1,
+'learning_rate':0.5,  
+'colsample_bytree':0.5,
+'subsample':.8,
+'objective':'binary:logistic', 
+'n_estimators':1000, 
+'reg_lambda':1,
+'max_depth':2, 
+'gamma':1,
+'alpha':1
+```
 
 ![xgb_coors](https://github.com/arjology/data_science/blob/master/figures/home_credit_xgb_corrs.png)
 
 Correlation plot from XG Boost
 ![xgb_coors](https://github.com/arjology/data_science/blob/master/figures/home_credit_xgb_corrs.png)
 
-# Results <a href="results"></a>
+## Results <a href="results"></a>
 
-## LightGB
+### LightGB
 Private score: `0.77583`
 Public score: `0.77499`
 
-## XGBoost
+### XGBoost
 Private score: `0.74768`
 Public score: `0.75189`
 
-## Spark
+### Spark
 
