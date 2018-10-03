@@ -1,5 +1,5 @@
 # Table of Contents
-1. [Introduction](introduction)
+1. [Introduction](#introduction)
 2. [Linear Regression](https://github.com/arjology/data_science/tree/master/linear_regression)
 3. [Random Forrests and Gradient Boosting](https://github.com/arjology/data_science/tree/master/gradient_boosting)
 4. [U.S. Census and 2016 Elections](https://github.com/arjology/data_science/tree/master/voting_census)
