@@ -1,0 +1,5 @@
+|ERROR|2018-10-12 22:24:12,496|Error: Your token is not authorized, please contact api@fxcm.com
+|ERROR|2018-10-12 22:28:44,763|Error: Your token is not authorized, please contact api@fxcm.com
+|ERROR|2018-10-14 19:26:43,697|Socket returns an error: ('Connection aborted.', ConnectionResetError(54, 'Connection reset by peer')).
+|ERROR|2018-10-14 19:27:16,439|Socket returns an error: ('Connection aborted.', ConnectionResetError(54, 'Connection reset by peer')).
+|ERROR|2018-10-14 19:28:25,036|Socket returns an error: ('Connection aborted.', ConnectionResetError(54, 'Connection reset by peer')).

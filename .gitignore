@@ -17,6 +17,7 @@ metastore/
 .idea
 .project
 .code-workspace
+.cfg
 env/
 
 # OS files
