@@ -7,6 +7,7 @@
 6. [Home Credit Default Risk](https://github.com/arjology/data_science/tree/master/home_credit_default_risk)
 7. [Markov Clustering](https://github.com/arjology/data_science/tree/master/markov_clustering)
 8. [Probabilistic Graphical Models](https://github.com/arjology/data_science/tree/master/PGM)
+9. [Predicting NYC taxi fares](https://github.com/arjology/data_science/tree/master/nyc_taxi_fare_prediction)
 
 ## Introduction <a name="introduction"></a>
 Random data science projects. More to come...
