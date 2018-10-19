@@ -1,22 +1,29 @@
+from copy import copy as make_copy
 from typing import Union, NamedTuple, Tuple
 
-NodeId = NamedTuple("NodeId", [("uid", int)])
-EdgeId = NamedTuple("EdgeId", [("uid", str), ("src_uid", NodeId), ("dst_uid", NodeId), ("length", Union[float, int])])
+Label = str
+NodeId = Union[int, str, tuple]
 
+NodeId = NamedTuple("NodeId", [
+])
+NodeId.__new__.__defaults__ = (None,) * len(NodeId._fields)
+
+EdgeId = NamedTuple("EdgeId", [("src_id", NodeId), ("dst_id", NodeId)])
+GraphElementId = Union[NodeId, EdgeId]
 
 class GraphElement(object):
     Properties = NamedTuple("GraphElementProperties", [])
 
-    def __init__(self, uid: Union[int, str], props: NamedTuple=None):
+    def __init__(self, props: NamedTuple=None):
         """Construct graph element with properties."""
-        self.uid = uid
         self.props = props or self.Properties()  # pylint: disable=E1102
         paths = {}
         names = self.properties()
 
     def __str__(self) -> str:
         """Get human-readable string representation."""
-        out = "\nProps:"
+        out = "Label: " + self.label()
+        out += "\nProps:"
         for name in self.defined():
             out += "\n    - {name}: {value}".format(
                 name=name,
@@ -24,9 +31,14 @@ class GraphElement(object):
             )
         return out
 
-    def uid(self) -> Union[VertexId, None]:
+    def uid(self) -> Union[NodeId, None]:
         """Get hashable graph element ID."""
         raise NotImplementedError("Must be implemented by subclass")
+
+    @classmethod
+    def label(cls) -> Label:
+        """Get label of graph element which determines its type / properties."""
+        return cls.__name__
 
     def defined(self) -> Tuple[str]:
         """Get tuple of defined property names, i.e., with value that is not None."""
@@ -106,33 +118,40 @@ class GraphElement(object):
         """Test equality of graph element properties."""
         if not isinstance(other, GraphElement):
             return False
+        if self.label() != other.label():
+            return False
         return self.props == other.props
+    
+    def copy(self) -> 'GraphElement':
+        """Make shallow copy of graph element properties."""
+        return self.update(self)
 
     def __hash__(self):
-        return hash(self.uid)
+        return hash(self.uid())
+
+GraphElementProperties = GraphElement.Properties  # required by pickle module        
 
 
 class Node(GraphElement):
 
     Properties = NamedTuple("NodeProperties", [
-        ("uid", int)
+        ("uid_", int),
         ])
     Properties.__new__.__defaults__ = (None,) * len(Properties._fields)
 
-    def __init__(self, uid: int, **kwargs):
+    def __init__(self, **kwargs):
         """Create node of graph.
 
         Args:
             kwargs: Property values
         """
-        super().__init__(uid=uid, props=self.Properties(**kwargs))
-        self.uid = uid
+        super().__init__(props=self.Properties(**kwargs))
 
     def uid(self) -> Union[NodeId, None]:
-        """Get geo-image vertex ID."""
-        if not self.uid:
+        """Get node ID."""
+        if not self.uid_:
             return None
-        return NodeId(uid=self.uid)
+        return self.uid_
 
     def __str__(self) -> str:
         """Get human-readable string representation."""
@@ -143,14 +162,15 @@ class Node(GraphElement):
 
 class Edge(GraphElement):
     Properties = NamedTuple("EdgeProperties", [
-        ("uid", str),
-        ("src", Node),
-        ("dst", Node),
-        ("length", Union[int, float])
+        ("uid_", str),
+        ("length", Union[int, float]),
     ])
     Properties.__new__.__defaults__ = (None,) * len(Properties._fields)
 
-    def __init__(self, uid: str, src: Node, dst: Node, **kwargs):
+    def __init__(self, 
+                 src: Node=None,
+                 dst: Node=None,
+                 **kwargs):
         """Construct graph edge.
 
         Args:
@@ -158,8 +178,7 @@ class Edge(GraphElement):
         """
         assert isinstance(src, Node)
         assert isinstance(dst, Node)
-        super().__init__(uid=uid, props=self.Properties(**kwargs))
-        self.uid = uid
+        super().__init__(props=self.Properties(**kwargs))
         self.src = src
         self.dst = dst
 
@@ -167,11 +186,11 @@ class Edge(GraphElement):
         """Get hashable edge ID."""
         assert self.src is not None
         assert self.dst is not None
-        src_uid = self.src.uid()
-        dst_uid = self.dst.uid()
+        src_id = self.src.uid()
+        dst_id = self.dst.uid()
         if src_id is None or dst_id is None:
             return None
-        return EdgeId(uid=self.uid, src_uid=src_uid, dst_uid=dst_uid, length=self.length)
+        return EdgeId(src_id=src_id, dst_id=dst_id)
 
     def length(self) -> Union[float, int, None]:
         """Length (distance) of edge"""

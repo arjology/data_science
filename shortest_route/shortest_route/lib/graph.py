@@ -2,6 +2,7 @@ from typing import Set, Union, List, Generator, Iterator, Iterable, Tuple
 from collections import namedtuple
 import hashlib
 from pathlib import Path
+import pickle
 
 from shortest_route.lib.elements import Node, Edge
 from shortest_route.lib.utilities import optmap
@@ -25,12 +26,11 @@ class Graph(object):
             nodes: Collection of or individual node
             egdes: Collection of or individual edge
         """
-        self._nodes = set(nodes) if nodes else set()
-        self._edges = set(edges) if edges else set()
+        self._nodes = nodes if nodes else []
+        self._edges = edges if edges else []
         self._adjacency = {}
         self._index = {}
         self._indverted_edges = {}
-        self._populate_indexes()
         self._path = None
 
     def is_empty(self) -> bool:
@@ -49,10 +49,10 @@ class Graph(object):
         """Get list of graph edges."""
         return self._edges
 
-    def clear(self, force: bool = False) -> object:
+    def clear(self) -> object:
         """Drop nodes and edges."""
-        self.nodes = {}
-        self._edges = {}
+        self._nodes = []
+        self._edges = []
         self._adjacency = {}
         self._index = {}
         self._indverted_edges = {}
@@ -62,6 +62,7 @@ class Graph(object):
         """Drop edges."""
         self._edges = {}
         self._indverted_edges = {}
+        del self._index[Edge.label()]
         return self
 
     def set_path(self, path: Union[Path, str]) -> 'Graph':
@@ -99,14 +100,12 @@ class Graph(object):
 
     def __getstate__(self):
         """Get object state as dictionary for pickling."""
-        state = super().__getstate__()
-        state.update({
+        return {
             "nodes": self._nodes,
             "edges": self._edges,
             "index": self._index,
             "indverted_edges": self._indverted_edges
-        })
-        return state
+            }
 
     def __setstate__(self, values):
         """Set object state from unpickled dictionary."""
@@ -121,14 +120,38 @@ class Graph(object):
         if self._path is not None:
             self.dump(self._path)
 
+    def dumps(self) -> bytes:
+        """Serialize graph."""
+        return pickle.dumps(self)
+
+    @classmethod
+    def loads(cls, data: bytes) -> 'Graph':
+        """Deserialize graph."""
+        return pickle.loads(data)
+
+    def dump(self, path: Union[Path, str]):
+        """Write graph to binary file."""
+        path = Path(path).absolute()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(str(path), "wb") as fobj:
+            fobj.write(self.dumps())
+
+    @classmethod
+    def load(cls, path: Union[Path, str]) -> 'Graph':
+        with open(str(path), "rb") as fobj:
+            return cls.loads(fobj.read())
+
     # ----------------------------------------------------------------------------------------------
     # Upsert vertex or edge
 
     def add_node(self, node: Node):
         """Upsert graph node and return inserted shallow copy."""
         assert isinstance(node, Node)
+        lbl = node.label()
         uid = node.uid()
-        idx = self._index.get(uid, len(self._nodes))
+        if lbl not in self._index:
+            self._index[lbl] = {}
+        idx = self._index[lbl].get(uid, len(self._nodes))
         if idx < len(self._nodes):
             graph_node = self._nodes[idx]
             graph_node.update(node)
@@ -138,33 +161,27 @@ class Graph(object):
             self._index[uid] = idx
         return graph_node
 
-    def add_edge(self, edge: Edge):
+    def add_edge(self, edge: Edge) -> Edge:
         """Upsert graph edge and return inserted shallow copy."""
-        uid, src, dst, length = edge.uid()
-        if src not in self._index:
-            self._index[src] = {}
+        assert isinstance(edge, Edge)
+        lbl = edge.label()
+        src, dst = edge.uid()
+        if lbl not in self._index:
+            self._index[lbl] = {src: {}}
+        elif src not in self._index[lbl]:
+            self._index[lbl][src] = {}
         num = len(self._edges)
-        idx = self._index[src].get(dst, num)
+        idx = self._index[lbl][src].get(dst, num)
         if idx < num:
             graph_edge = self._edges[idx]
             graph_edge.update(edge)
         else:
             graph_edge = edge.copy()
             self._edges.append(graph_edge)
-            self._index[src][dst] = idx
+            self._index[lbl][src][dst] = idx
         return graph_edge
 
-        if isinstance(edges, Edge):
-            self.add_nodes([edges.src, edges.dst])
-            self._edges.update([edges])
-            self._populate_indexes([edges])
-        elif isinstance(edges, Iterable):
-            for edge in edges:
-                self.add_nodes([edge.src, edge.dst])
-                self._edges.update([edge])
-            self._populate_indexes([edge])
-
-    def _populate_indexes(self, *nodes: Node=None, *edges: Edge=None):
+    def _populate_indexes(self, nodes: Iterator[Node]=None, edges: Iterator[Edge]=None):
         nodes = nodes if nodes else self._nodes if self._nodes else []
         edges = edges if edges else self._edges if self._edges else []
         self.add_node(nodes)
@@ -186,7 +203,7 @@ class Graph(object):
     # ----------------------------------------------------------------------------------------------
     # Find vertices or edges
 
-    def find_vertices(self, *nodes: Node) \
+    def find_nodes(self, *nodes: Node) \
             -> Generator[Node, None, int]:
         """Find elements in the graph which share the specified subset of properties with the given example.
 
@@ -199,10 +216,11 @@ class Graph(object):
         count = 0
         for node in nodes:
             if node is not None:
-                assert isinstance(vertex, Node)
+                assert isinstance(node, Node)
+                index = self._index.get(node.label(), {})
                 uid = node.uid()
                 if uid is None:
-                    candidates = [self._nodes[idx] for idx in self._index.values()]
+                    candidates = [self._nodes[idx] for idx in index.values()]
                 else:
                     idx = self._index.get(uid, -1)
                     candidates = [] if idx < 0 else [self._nodes[idx]]
@@ -228,6 +246,7 @@ class Graph(object):
         for edge in edges:
             if edge is not None:
                 assert isinstance(edge, Edge)
+                index = self._index.get(edge.label(), {})
                 src = edge.src.uid()
                 dst = edge.dst.uid()
                 if src is None and dst is None:
@@ -236,12 +255,12 @@ class Graph(object):
                     candidates = set()
                     for a, b in [(src, dst), (dst, src)] if undirected else [(src, dst)]:
                         if a is None:
-                            for item in self._index.values():
+                            for item in index.values():
                                 idx = item.get(b, -1)
                                 if idx != -1:
                                     candidates.add(idx)
                         else:
-                            candidates.update(self._index.get(a, {}).values())
+                            candidates.update(index.get(a, {}).values())
                 for idx in candidates:
                     candidate = self._edges[idx]
                     if edge.match(candidate):
@@ -254,66 +273,9 @@ class CityMapperGraph(Graph):
     def __init__(self,
                  nodes: Union[Iterator[Node]]=None,
                  edges: Union[Iterator[Edge]]=None):
-        self._edges = set(edges) if edges else set()
-        self._nodes = set(nodes) if nodes else set()
+        self._edges = edges if edges else []
+        self._nodes = nodes if nodes else []
         self._adjacency = {}
+        self._index = {}
         self._indverted_edges = {}
-        self._populate_indexes()
-
-    def find_nodes(self, nodes: Union[str,
-                                      int,
-                                      Node,
-                                      Iterable[Union[Node, str, int]]
-                                      ]) -> Generator[bool, None, int]:
-        count = 0
-        print(isinstance(nodes, Node))
-        if isinstance(nodes, (str, int)):
-            print("Integer or string!")
-            if Node(id=int(nodes)) in self._nodes:
-                count += 1
-                yield True
-        elif isinstance(nodes, Node):
-            print("Node!")
-            if nodes in self._nodes:
-                count += 1
-                yield True
-        elif isinstance(nodes, Iterable):
-            print("Iterable!")
-            for node in nodes:
-                if isinstance(node, (str, int)):
-                    print("Integer or string!")
-                    node = Node(id=int(node))
-                if node in self._nodes:
-                    count += 1
-                    yield True
-        return count
-
-    def find_edges(self, edges: Union[str,
-                                      Edge,
-                                      Tuple[Union[str, Node], Union[str, Node]],
-                                      Iterable[Union[Edge, str]]
-                                      ]) -> Generator[bool, None, int]:
-        count = 0
-        if isinstance(edges, str):
-            if edges in self._indverted_edges:
-                count += 1
-                yield True
-        elif isinstance(edges, Edge):
-            if edges.id in self._indverted_edges:
-                count += 1
-                yield True
-        elif isinstance(edges, Tuple):
-            edge_id = self.make_edge_id(edges[0], edges[1])
-            if edge_id in self._indverted_edges:
-                count += 1
-                yield True
-        elif isinstance(edges, Iterable):
-            for edge in edges:
-                if isinstance(edge, Edge):
-                    edge = edge.id
-                if isinstance(edge, Tuple):
-                    edge = self.make_edge_id(edge[0], edge[1])
-                if edge in self._indverted_edges:
-                    count += 1
-                    yield True
-        return count
+        self._path = None
