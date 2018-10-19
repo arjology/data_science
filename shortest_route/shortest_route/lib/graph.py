@@ -2,9 +2,9 @@ from typing import Set, Union, List, Generator, Iterator, Iterable, Tuple
 from collections import namedtuple
 import hashlib
 
-from elements import Node, Edge
+from shortest_route.lib.elements import Node, Edge
 
-class CityMapperGraph(object):
+class Graph(object):
     
     def __init__(self, 
                  nodes: Union[Iterator[Node]]=None, 
@@ -21,22 +21,6 @@ class CityMapperGraph(object):
         if isinstance(dst, Node):
             dst = dst.id
         return hashlib.sha256("{}_{}".format(str(src),str(dst)).encode()).hexdigest()
-        
-    def _populate_indexes(self, edges: Iterable[Edge]=None):
-        edges = edges if edges else self.edges
-        for e in self.edges:
-            # Populate adjacency list for source -> destination
-            if e.src in self.adjacency:
-                self.adjacency[e.src].update([e.dst])
-            else:
-                self.adjacency[e.src] = set([e.dst])
-            # Populate adjacency list for destination -> source
-            if e.dst in self.adjacency:
-                self.adjacency[e.dst].update([e.src])
-            else:
-                self.adjacency[e.dst] = set([e.src])
-            if e.id not in self.inverted_edges:
-                self.inverted_edges[e.id] = [e.src, e.dst, e.length]
                 
     def add_nodes(self, nodes: Union[Node,
                                      str, 
@@ -63,22 +47,70 @@ class CityMapperGraph(object):
                 self.edges.update([edge])
             self._populate_indexes([edge])
 
+    def _populate_indexes(self, edges: Iterable[Edge]=None):
+        edges = edges if edges else self.edges if self.edges else []
+        for e in edges:
+            # Populate adjacency list for source -> destination
+            if e.src in self.adjacency:
+                self.adjacency[e.src].update([e.dst])
+            else:
+                self.adjacency[e.src] = set([e.dst])
+            # Populate adjacency list for destination -> source
+            if e.dst in self.adjacency:
+                self.adjacency[e.dst].update([e.src])
+            else:
+                self.adjacency[e.dst] = set([e.src])
+            if e.id not in self.inverted_edges:
+                self.inverted_edges[e.id] = [e.src, e.dst, e.length]
+
+    @classmethod
     def find_nodes(self, nodes: Union[str, 
                                      int, 
                                      Iterable[Union[Node, str, int]]]
                   ) -> Generator[bool, None, int]:
+        raise NotImplementedError("Must be implemented by subclass")
+
+    @classmethod
+    def find_edges(self, edges: Union[str,
+                                     Tuple[Union[str, Node], Union[str, Node]],
+                                     Iterable[Union[Edge, str]]]
+                 ) -> Generator[bool, None, int]:
+        raise NotImplementedError("Must be implemented by subclass")
+
+
+class CityMapperGraph(Graph):
+    
+    def __init__(self, 
+                 nodes: Union[Iterator[Node]]=None, 
+                 edges: Union[Iterator[Edge]]=None):
+        self.edges = set(edges) if edges else set()
+        self.nodes = set(nodes) if nodes else set()
+        self.adjacency = {}
+        self.inverted_edges = {}
+        self._populate_indexes()
+
+    def find_nodes(self, nodes: Union[str, 
+                                      int, 
+                                      Node,
+                                      Iterable[Union[Node, str, int]]]
+                  ) -> Generator[bool, None, int]:
         count = 0
+        print(isinstance(nodes, Node))
         if isinstance(nodes, (str, int)):
+            print("Integer or string!")
             if Node(id=int(nodes)) in self.nodes:
                 count += 1
                 yield True
         elif isinstance(nodes, Node):
+            print("Node!")
             if nodes in self.nodes:
                 count += 1
                 yield True
         elif isinstance(nodes, Iterable):
+            print("Iterable!")
             for node in nodes:
                 if isinstance(node, (str, int)):
+                    print("Integer or string!")
                     node = Node(id=int(node))
                 if node in self.nodes:
                     count += 1
@@ -86,8 +118,9 @@ class CityMapperGraph(object):
         return count
 
     def find_edges(self, edges: Union[str,
-                                     Tuple[Union[str, Node], Union[str, Node]],
-                                     Iterable[Union[Edge, str]]]
+                                      Edge,
+                                      Tuple[Union[str, Node], Union[str, Node]],
+                                      Iterable[Union[Edge, str]]]
                  ) -> Generator[bool, None, int]:
         count = 0
         if isinstance(edges, str):

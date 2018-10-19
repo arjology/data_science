@@ -1,6 +1,5 @@
 from typing import Union, NamedTuple, Tuple
 
-
 NodeId = NamedTuple("NodeId", [("id", int)])
 EdgeId = NamedTuple("EdgeId", [("id", str), ("src_id", NodeId), ("dst_id", NodeId), ("length", Union[float, int])])
 
