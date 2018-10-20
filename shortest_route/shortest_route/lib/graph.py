@@ -1,10 +1,11 @@
 from typing import Set, Union, List, Generator, Iterator, Iterable, Tuple
-from collections import namedtuple
+from collections import namedtuple, deque
 import hashlib
 from pathlib import Path
 import pickle
+import math
 
-from shortest_route.lib.elements import Node, Edge
+from shortest_route.lib.elements import Node, NodeId, Edge
 from shortest_route.lib.utilities import optmap
 
 
@@ -17,17 +18,15 @@ class Graph(object):
     been saved after serialization, e.g., using Python's pickle module. This may be useful for
     testing, but a proper graph database with efficient search indices must be used for production.
     """
-    def __init__(self,
-                 nodes: Union[Iterator[Node], Node] = None,
-                 edges: Union[Iterator[Edge], Edge] = None):
+    def __init__(self):
         """Initialize graph interface.
 
         Args:
             nodes: Collection of or individual node
             egdes: Collection of or individual edge
         """
-        self._nodes = nodes if nodes else []
-        self._edges = edges if edges else []
+        self._nodes = []
+        self._edges = []
         self._adjacency = {}
         self._index = {}
         self._indverted_edges = {}
@@ -37,7 +36,7 @@ class Graph(object):
         """Whether graph is empty."""
         return not self._nodes
 
-    def number_of_vertices(self) -> int:
+    def count(self) -> int:
         """Total number of nodes."""
         return len(self._nodes)
 
@@ -62,6 +61,7 @@ class Graph(object):
         """Drop edges."""
         self._edges = {}
         self._indverted_edges = {}
+        self._adjacency = {}
         del self._index[Edge.label()]
         return self
 
@@ -78,9 +78,9 @@ class Graph(object):
 
     def make_edge_id(self, src: Union[str, int, Node], dst: Union[str, int, Node]) -> str:
         if isinstance(src, Node):
-            src = src.id
+            src = src.uid()
         if isinstance(dst, Node):
-            dst = dst.id
+            dst = dst.uid()
         return hashlib.sha256("{}_{}".format(str(src), str(dst)).encode()).hexdigest()
 
     # ----------------------------------------------------------------------------------------------
@@ -104,16 +104,18 @@ class Graph(object):
             "nodes": self._nodes,
             "edges": self._edges,
             "index": self._index,
-            "indverted_edges": self._indverted_edges
+            "indverted_edges": self._indverted_edges,
+            "adjacency": self._adjacency
             }
 
     def __setstate__(self, values):
         """Set object state from unpickled dictionary."""
-        self.__init__(nodes=self._nodes, edges=self._edges)
+        self.__init__()
         self._nodes = values["nodes"]
         self._edges = values["edges"]
         self._index = values["index"]
         self._indverted_edges = values["indverted_edges"]
+        self._adjacency = values["adjacency"]
 
     def save(self):
         """Save graph."""
@@ -142,7 +144,7 @@ class Graph(object):
             return cls.loads(fobj.read())
 
     # ----------------------------------------------------------------------------------------------
-    # Upsert vertex or edge
+    # Upsert node or edge
 
     def add_node(self, node: Node):
         """Upsert graph node and return inserted shallow copy."""
@@ -158,7 +160,7 @@ class Graph(object):
         else:
             graph_node = node.copy()
             self._nodes.append(graph_node)
-            self._index[uid] = idx
+            self._index[lbl][uid] = idx
         return graph_node
 
     def add_edge(self, edge: Edge) -> Edge:
@@ -179,26 +181,21 @@ class Graph(object):
             graph_edge = edge.copy()
             self._edges.append(graph_edge)
             self._index[lbl][src][dst] = idx
-        return graph_edge
 
-    def _populate_indexes(self, nodes: Iterator[Node]=None, edges: Iterator[Edge]=None):
-        nodes = nodes if nodes else self._nodes if self._nodes else []
-        edges = edges if edges else self._edges if self._edges else []
-        self.add_node(nodes)
-        self.add_edge(edges)
-        for edge in edges:
-            # Populate adjacency list for source -> destination
-            if edge.src.uid() in self._adjacency:
-                self._adjacency[edge.src.uid()].update([edge.dst.uid()])
-            else:
-                self._adjacency[edge.src.uid()] = set([edge.dst.uid()])
-            # Populate adjacency list for destination -> source
-            if edge.dst.uid() in self._adjacency:
-                self._adjacency[edge.dst.uid()].update([edge.src.uid()])
-            else:
-                self._adjacency[edge.dst.uid()] = set([edge.src.uid()])
-            if edge.id not in self._indverted_edges:
-                self._indverted_edges[edge.uid] = edge.uid()
+        # Populate adjacency list for source -> destination
+        if src in self._adjacency:
+            self._adjacency[src].update([dst])
+        else:
+            self._adjacency[src] = set([dst])
+        # Populate adjacency list for destination -> source
+        if dst in self._adjacency:
+            self._adjacency[dst].update([src])
+        else:
+            self._adjacency[dst] = set([src])
+        if edge.uid not in self._indverted_edges:
+            self._indverted_edges[edge.props.uid_] = edge.uid()
+
+        return graph_edge
 
     # ----------------------------------------------------------------------------------------------
     # Find vertices or edges
@@ -222,7 +219,7 @@ class Graph(object):
                 if uid is None:
                     candidates = [self._nodes[idx] for idx in index.values()]
                 else:
-                    idx = self._index.get(uid, -1)
+                    idx = index.get(uid, -1)
                     candidates = [] if idx < 0 else [self._nodes[idx]]
                 for candidate in candidates:
                     if node.match(candidate):
@@ -268,14 +265,77 @@ class Graph(object):
                         count += 1
         return count
 
+    def neighbours(self, node: Union[Node, NodeId]) -> Generator[Tuple[Node, float], None, int]:
+        count = 0
+        uid = node.uid() if isinstance(node, Node) else node.uid_ if isinstance(node, NodeId) else None
+        found = self._adjacency.get(uid)
+        if found:
+            for neighbour in found:
+                neighbour = Node.from_uid(NodeId(uid_=neighbour))
+                edge = Edge(src=node, dst=neighbour)
+                cost = next(self.find_edges(edge)).props.length
+                yield (neighbour, cost)
+                count += 1
+        return count
+
 
 class CityMapperGraph(Graph):
-    def __init__(self,
-                 nodes: Union[Iterator[Node]]=None,
-                 edges: Union[Iterator[Edge]]=None):
-        self._edges = edges if edges else []
-        self._nodes = nodes if nodes else []
-        self._adjacency = {}
-        self._index = {}
-        self._indverted_edges = {}
-        self._path = None
+    def __init__(self):
+        super().__init__()
+
+    # ----------------------------------------------------------------------------------------------
+    # Helper function to load lists of nodes and edges
+
+    def load_nodes_and_edges(self, nodes: List[Node]=None, edges: List[Node]=None):
+        for node in nodes:
+            self.add_node(node)
+        for edge in edges:
+            self.add_edge(edge)
+
+    # ----------------------------------------------------------------------------------------------
+    # Dijkstra's algorithm for finding the shortest paths between all nodes in the graph
+
+    def distance(self, src: Union[Node, NodeId], dst: Union[Node, NodeId]) \
+            -> Tuple[Union[deque, None], Union[float, None]]:
+        """Dijkstra's shortest route algorithm
+
+        Args:
+            src: Source node
+            dst: Destination node
+
+        Returns:
+            Total distance as float.
+        """
+
+        self.src = Node.from_arg(src)
+        self.dst = Node.from_arg(dst)
+
+        if self.src.uid() not in self._index[self.src.label()] \
+            or self.dst.uid() not in self._index[self.dst.label()]:
+            return (None, None)
+
+        prev_nodes = {
+            node.uid(): None for node in self._nodes
+        }
+        distances = {
+            node.uid(): math.inf for node in self._nodes
+        }
+        distances[self.src.uid()] = 0
+        nodes = [n.uid() for n in self._nodes]
+        while nodes:
+            curr_node = min(nodes, key=lambda node: distances[node])
+            if distances[curr_node] == math.inf:
+                break
+            for neighbour, cost in self.neighbours(NodeId(uid_=curr_node)):
+                path_cost = distances[curr_node] + cost
+                if path_cost < distances[neighbour.uid()]:
+                    distances[neighbour.uid()] = path_cost
+                    prev_nodes[neighbour.uid()] = curr_node
+            nodes.remove(curr_node)
+        total_path, curr_node = deque(), self.dst.uid()
+        while prev_nodes[curr_node] is not None:
+            total_path.appendleft(curr_node)
+            curr_node = prev_nodes[curr_node]
+        if total_path:
+            total_path.appendleft(curr_node)
+        return total_path, distances[self.dst.uid()]

@@ -2,13 +2,12 @@ from copy import copy as make_copy
 from typing import Union, NamedTuple, Tuple
 
 Label = str
-NodeId = Union[int, str, tuple]
 
-NodeId = NamedTuple("NodeId", [
-])
+NodeId = NamedTuple("NodeId", [("uid_", Union[int, str])])
 NodeId.__new__.__defaults__ = (None,) * len(NodeId._fields)
 
 EdgeId = NamedTuple("EdgeId", [("src_id", NodeId), ("dst_id", NodeId)])
+
 GraphElementId = Union[NodeId, EdgeId]
 
 class GraphElement(object):
@@ -31,8 +30,13 @@ class GraphElement(object):
             )
         return out
 
-    def uid(self) -> Union[NodeId, None]:
+    def uid(self) -> Union[NodeId, EdgeId, None]:
         """Get hashable graph element ID."""
+        raise NotImplementedError("Must be implemented by subclass")
+
+    @classmethod
+    def from_uid(cls, uid: GraphElementId) -> 'GraphElement':
+        """Construct graph element from its ID object."""
         raise NotImplementedError("Must be implemented by subclass")
 
     @classmethod
@@ -153,6 +157,22 @@ class Node(GraphElement):
             return None
         return self.uid_
 
+    @classmethod
+    def from_uid(cls, uid: NodeId) -> 'Node':
+        """Construct node from NodeId."""
+        return cls(uid_=uid.uid_)
+
+    @classmethod
+    def from_arg(cls, node_or_uid: Union['Node', NodeId, None]) -> 'Node':
+        """Construct node from Node."""
+        if node_or_uid is None:
+            return cls()
+        if isinstance(node_or_uid, Node):
+            return node_or_uid
+        if isinstance(node_or_uid, NodeId):
+            return cls.from_uid(node_or_uid)
+        raise TypeError("Invalid argument type, must be either Node or NodeId")
+
     def __str__(self) -> str:
         """Get human-readable string representation."""
         return "Node:\n  {sup}".format(
@@ -168,19 +188,27 @@ class Edge(GraphElement):
     Properties.__new__.__defaults__ = (None,) * len(Properties._fields)
 
     def __init__(self, 
-                 src: Node=None,
-                 dst: Node=None,
+                 src: Union[Node, NodeId],
+                 dst: Union[Node, NodeId],
                  **kwargs):
         """Construct graph edge.
 
         Args:
-            kwargs: Property values
+            src: Source node. Must not be ``None``.
+            dst: Destination node. Must not be ``None``.
+            props: Edge properties.
         """
-        assert isinstance(src, Node)
-        assert isinstance(dst, Node)
+        self.src = Node.from_arg(src)
+        self.dst = Node.from_arg(dst)
+        if self.src.uid() is None:
+            if self.dst.uid() is not None:
+                self.src, self.dst = self.dst, self.src
+        elif self.dst.uid() is not None:
+            if self.src.uid() > self.dst.uid():
+                self.src, self.dst = self.dst, self.src
+        assert isinstance(self.src, Node)
+        assert isinstance(self.dst, Node)
         super().__init__(props=self.Properties(**kwargs))
-        self.src = src
-        self.dst = dst
 
     def uid(self) -> Union[EdgeId, None]:
         """Get hashable edge ID."""
@@ -191,6 +219,29 @@ class Edge(GraphElement):
         if src_id is None or dst_id is None:
             return None
         return EdgeId(src_id=src_id, dst_id=dst_id)
+
+    @classmethod
+    def from_uid(cls, uid: EdgeId) -> 'Edge':
+        """Construct edge from its ID object."""
+        assert isinstance(uid, tuple)
+        assert len(uid) == 2
+        assert isinstance(uid[0], NodeId)
+        assert isinstance(uid[1], NodeId)
+        return cls(uid[0], uid[1])
+
+    def match(self, other: object) -> bool:
+        # """Test if node and properties of given edge matches those defined by this instance."""
+        # if not GraphElement.match(self, other):
+        #     return False
+        if self.src.uid() is not None:
+            if self.dst.uid() is None:
+                if self.src.uid() in (other.src.uid(), other.dst.uid()):
+                    return True
+            else:
+                for src_id, dst_id in [(other.src.uid(), other.dst.uid()), (other.dst.uid(), other.src.uid())]:
+                    if self.src.uid() == src_id and self.dst.uid() == dst_id:
+                        return True
+        return False
 
     def length(self) -> Union[float, int, None]:
         """Length (distance) of edge"""
