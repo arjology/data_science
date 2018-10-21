@@ -10,26 +10,24 @@ function useage {
     exit
 }
 
-function install {
-    make test
-    make develop
-}
-
-
 function distance {
-    shortest_route -i $DATA -s $SRC -d $DST
+    if [ -z "$LOG" ]; then 
+        shortest_route -i $DATA -s $SRC -d $DST
+    else
+        shortest_route -i $DATA -s $SRC -d $DST -l $LOG
+    fi
 }
 
 # Setup vars
 DATA=$1
 SRC=$2
 DST=$3
+LOG=$4
 
-if [ $# -ne 3 ]; then
+if (( $# < 3 )); then
    echo $#
    useage
    exit
 fi
 
-install
 distance
