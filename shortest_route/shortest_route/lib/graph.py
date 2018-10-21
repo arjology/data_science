@@ -1,6 +1,5 @@
 from typing import Set, Union, List, Generator, Iterator, Iterable, Tuple
 from collections import namedtuple, deque
-import hashlib
 from pathlib import Path
 import pickle
 import math
@@ -40,7 +39,7 @@ class Graph(object):
         """Total number of nodes."""
         return len(self._nodes)
 
-    def nodes(self) -> Set[Node]:
+    def nodes(self) -> List[Node]:
         """ Get list of graph nodes."""
         return self._nodes
 
@@ -75,13 +74,6 @@ class Graph(object):
     def get_path(self) -> Union[Path, None]:
         """Get local file path of graph if any."""
         return self._path
-
-    def make_edge_id(self, src: Union[str, int, Node], dst: Union[str, int, Node]) -> str:
-        if isinstance(src, Node):
-            src = src.uid()
-        if isinstance(dst, Node):
-            dst = dst.uid()
-        return hashlib.sha256("{}_{}".format(str(src), str(dst)).encode()).hexdigest()
 
     # ----------------------------------------------------------------------------------------------
     # Comparison
@@ -293,10 +285,11 @@ class CityMapperGraph(Graph):
             self.add_edge(edge)
 
     # ----------------------------------------------------------------------------------------------
-    # Dijkstra's algorithm for finding the shortest paths between all nodes in the graph
+    # Distance function using either Dijkstra's algorithm for finding the shortest 
+    # paths between all nodes in the graph
 
     def distance(self, src: Union[Node, NodeId], dst: Union[Node, NodeId]) \
-            -> Tuple[Union[deque, None], Union[float, None]]:
+            -> Tuple[Union[List, None], Union[float, None]]:
         """Dijkstra's shortest route algorithm
 
         Args:
@@ -310,32 +303,34 @@ class CityMapperGraph(Graph):
         self.src = Node.from_arg(src)
         self.dst = Node.from_arg(dst)
 
-        if self.src.uid() not in self._index[self.src.label()] \
-            or self.dst.uid() not in self._index[self.dst.label()]:
-            return (None, None)
+        nodes = set(n.uid() for n in self._nodes)
 
+        S = set()
         prev_nodes = {
-            node.uid(): None for node in self._nodes
+            node: None for node in nodes
         }
         distances = {
-            node.uid(): math.inf for node in self._nodes
+            node: math.inf for node in nodes
         }
         distances[self.src.uid()] = 0
-        nodes = [n.uid() for n in self._nodes]
-        while nodes:
-            curr_node = min(nodes, key=lambda node: distances[node])
+
+        while S != nodes:
+            curr_node = min((set(distances.keys()) - S), key=distances.get)
+            curr_node = min((set(distances.keys()) - S), key=distances.get)
             if distances[curr_node] == math.inf:
                 break
-            for neighbour, cost in self.neighbours(NodeId(uid_=curr_node)):
+            for neighbour, cost in set(self.neighbours(NodeId(uid_=curr_node))) - S:
                 path_cost = distances[curr_node] + cost
                 if path_cost < distances[neighbour.uid()]:
                     distances[neighbour.uid()] = path_cost
                     prev_nodes[neighbour.uid()] = curr_node
-            nodes.remove(curr_node)
-        total_path, curr_node = deque(), self.dst.uid()
-        while prev_nodes[curr_node] is not None:
-            total_path.appendleft(curr_node)
+                S.add(curr_node)
+
+        path = []
+        curr_node = self.dst.uid()
+        
+        while curr_node is not None:
+            path.append(curr_node)
             curr_node = prev_nodes[curr_node]
-        if total_path:
-            total_path.appendleft(curr_node)
-        return total_path, distances[self.dst.uid()]
+        path.reverse()
+        return path, distances[self.dst.uid()]

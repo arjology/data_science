@@ -1,9 +1,10 @@
 from copy import copy as make_copy
 from typing import Union, NamedTuple, Tuple
+import hashlib
 
 Label = str
 
-NodeId = NamedTuple("NodeId", [("uid_", Union[int, str])])
+NodeId = NamedTuple("NodeId", [("uid_", int)])
 NodeId.__new__.__defaults__ = (None,) * len(NodeId._fields)
 
 EdgeId = NamedTuple("EdgeId", [("src_id", NodeId), ("dst_id", NodeId)])
@@ -160,7 +161,7 @@ class Node(GraphElement):
     @classmethod
     def from_uid(cls, uid: NodeId) -> 'Node':
         """Construct node from NodeId."""
-        return cls(uid_=uid.uid_)
+        return cls(uid_=int(uid.uid_))
 
     @classmethod
     def from_arg(cls, node_or_uid: Union['Node', NodeId, None]) -> 'Node':
@@ -208,7 +209,15 @@ class Edge(GraphElement):
                 self.src, self.dst = self.dst, self.src
         assert isinstance(self.src, Node)
         assert isinstance(self.dst, Node)
+        self.uid_ = self.make_edge_id(self.src.uid(), self.dst.uid())
         super().__init__(props=self.Properties(**kwargs))
+
+    def make_edge_id(self, src: Union[str, int, Node], dst: Union[str, int, Node]) -> str:
+        if isinstance(src, Node):
+            src = src.uid()
+        if isinstance(dst, Node):
+            dst = dst.uid()
+        return hashlib.sha1("{}_{}".format(str(src), str(dst)).encode()).hexdigest()
 
     def uid(self) -> Union[EdgeId, None]:
         """Get hashable edge ID."""
