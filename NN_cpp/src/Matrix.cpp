@@ -8,7 +8,7 @@ Matrix::Matrix(int height, int width)
 {
   this->height = height;
   this->width = width;
-  this->array = std::vector<std::vector<double>>(height, std::vector<std::vector<double>>(width));
+  this->array = std::vector<std::vector<double>>(height, std::vector<double>(width));
 }
 
 Matrix::Matrix(std::vector<std::vector<double>> const &array)
@@ -25,7 +25,7 @@ Matrix Matrix::multiply(double const &value)
   int i, j;
   for (i=0; i<height; i++)
   {
-    for (j=0; j<widht; j++)
+    for (j=0; j<width; j++)
     {
       result.array[i][j] = array[i][j] * value;
     }
@@ -35,12 +35,12 @@ Matrix Matrix::multiply(double const &value)
 
 Matrix Matrix::add(Matrix const &m) const
 {
-  assert(height==m.height && widht==m.widht);
+  assert(height==m.height && width==m.width);
   Matrix result(height, width);
   int i, j;
   for (i=0; i<height; i++)
   {
-    for (j=0; j<widht; j++)
+    for (j=0; j<width; j++)
     {
       result.array[i][j] = array[i][j] + m.array[i][j];
     }
@@ -50,12 +50,12 @@ Matrix Matrix::add(Matrix const &m) const
 
 Matrix Matrix::subtract(Matrix const &m) const
 {
-  assert(height==m.height && widht==m.widht);
+  assert(height==m.height && width==m.width);
   Matrix result(height, width);
   int i, j;
   for (i=0; i<height; i++)
   {
-    for (j=0; j<widht; j++)
+    for (j=0; j<width; j++)
     {
       result.array[i][j] = array[i][j] - m.array[i][j];
     }
@@ -65,12 +65,12 @@ Matrix Matrix::subtract(Matrix const &m) const
 
 Matrix Matrix::multiply(Matrix const &m) const
 {
-  assert(height==m.height && widht==m.widht);
+  assert(height==m.height && width==m.width);
   Matrix result(height, width);
   int i, j;
   for (i=0; i<height; i++)
   {
-    for (j=0; j<widht; j++)
+    for (j=0; j<width; j++)
     {
       result.array[i][j] = array[i][j] * m.array[i][j];
     }
@@ -81,7 +81,7 @@ Matrix Matrix::multiply(Matrix const &m) const
 Matrix Matrix::dot(Matrix const &m) const
 {
   assert (width==m.height);
-  int i, j, h mwidth = m.width;
+  int i, j, h, mwidth = m.width;
   double w = 0;
   Matrix result(height, mwidth);
   for (i=0; i<height; i++)
@@ -132,7 +132,7 @@ Matrix Matrix::applyFunction(double (*function)(double)) const
 void Matrix::print(std::ostream &flux) const
 {
   int i, j;
-  int maxLength[width] = {};
+  int maxLength[width];
   std::stringstream ss;
   for (i=0; i<height; i++)
   {

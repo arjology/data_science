@@ -34,6 +34,8 @@ Thumbs.db
 *.pyc
 *.pyo
 *.pyd
+*.gch
+*.out
 
 # temporary files
 *~
