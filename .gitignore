@@ -45,6 +45,7 @@ Thumbs.db
 *.orig
 *flymake.py
 *.ipynb_checkpoints/
+*.log
 
 # setuptools files
 /.eggs/
