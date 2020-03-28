@@ -8,6 +8,9 @@
 
 using namespace std;
 
+Matrix X, W1, H, W2, Y, B1, B2, Y2, dJdB1, dJdB2, dJdW1, dJdW2;
+double learningRate;
+
 double random(double x)
 {
   return (double)(rand() % 10000 + 1)/10000 - 0.5;
@@ -33,39 +36,6 @@ double stepFunction(double x)
   }
   return x;
 }
-
-void loadTraining(const char *filename, vector<vector<double>> &input, vector<vector<double>> &output)
-{
-  int trainingSize = 946;
-  input.resize(trainingSize);
-  output.resize(trainingSize);
-
-  ifstream file(filename);
-  if (file)
-  {
-    string line;
-    int n;
-    for (int i=0; i<trainingSize; i++)
-    {
-      for (int h=0; h<32; h++)
-      {
-        getline(file, line);
-        for (int w=0; w<32; w++)
-        {
-          input[i].push_back(atoi(line.substr(w, 1).c_str()));
-        }
-      }
-      getline(file, line);
-      output[i].resize(10); // Output ranges from 0 - 9
-      n = atoi(line.substr(0, 1).c_str()); // Get the number represented by the array
-      output[i][n] = 1; // Set value at position to 1; other values automatically 0 due to resize
-    }
-  }
-  file.close();
-}
-
-Matrix X, W1, H, W2, Y, B1, B2, Y2, dJdB1, dJdB2, dJdW1, dJdW2;
-double learningRate;
 
 void init(int inputNeuron, int hiddenNeuron, int outputNeuron, double rate)
 {
@@ -109,6 +79,36 @@ void learn(vector<double> expectedOutput)
   B2 = B2.subtract(dJdB2.multiply(learningRate));
 }
 
+void loadTraining(const char *filename, vector<vector<double>> &input, vector<vector<double>> &output)
+{
+  int trainingSize = 946;
+  input.resize(trainingSize);
+  output.resize(trainingSize);
+
+  ifstream file(filename);
+  if (file)
+  {
+    string line;
+    int n;
+    for (int i=0; i<trainingSize; i++)
+    {
+      for (int h=0; h<32; h++)
+      {
+        getline(file, line);
+        for (int w=0; w<32; w++)
+        {
+          input[i].push_back(atoi(line.substr(w, 1).c_str()));
+        }
+      }
+      getline(file, line);
+      output[i].resize(10); // Output ranges from 0 - 9
+      n = atoi(line.substr(0, 1).c_str()); // Get the number represented by the array
+      output[i][n] = 1; // Set value at position to 1; other values automatically 0 due to resize
+    }
+  }
+  file.close();
+}
+
 int main(int argc, char *argv[])
 {
   srand(time(NULL)); // generate random weights
@@ -138,12 +138,14 @@ int main(int argc, char *argv[])
 
   // test
   cout << "expected output: actual output" << endl;
-  for (int i=inputVector.size()-10; inputVector.size(); i++)
-  {
-    for (int j=0; j<10; j++)
-    {
-      cout << outputVector[i][j] << " ";
-    }
-    cout << ": " << computeOutput(inputVector[i]).applyFunction(stepFunction) << endl;
-  }
+  cout << outputVector[0][0] << " ";
+  cout << ": " << computeOutput(inputVector[0]).applyFunction(stepFunction) << endl; 
+  // for (int i=inputVector.size()-10; inputVector.size(); i++)
+  // {
+  //   for (int j=0; j<10; j++)
+  //   {
+  //     cout << outputVector[i][j] << " ";
+  //   }
+  //   cout << ": " << computeOutput(inputVector[i]).applyFunction(stepFunction) << endl;
+  // }
 }

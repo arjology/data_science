@@ -132,7 +132,7 @@ Matrix Matrix::applyFunction(double (*function)(double)) const
 void Matrix::print(std::ostream &flux) const
 {
   int i, j;
-  int maxLength[width];
+  int maxLength[width] = {};
   std::stringstream ss;
   for (i=0; i<height; i++)
   {
@@ -154,7 +154,7 @@ void Matrix::print(std::ostream &flux) const
       ss << array[i][j];
       for (int k=0; k<maxLength[j]-ss.str().size() + 1; k++)
       {
-        flux << ' ';
+        flux << " ";
       }
       ss.str(std::string());
     }
