@@ -8,7 +8,7 @@
 
 using namespace std;
 
-Matrix X, W1, H, W2, Y, B1, B2, Y2, dJdB1, dJdB2, dJdW1, dJdW2;
+Matrix<double> X, W1, H, W2, Y, B1, B2, Y2, dJdB1, dJdB2, dJdW1, dJdW2;
 double learningRate;
 
 double random(double x)
@@ -41,10 +41,10 @@ void init(int inputNeuron, int hiddenNeuron, int outputNeuron, double rate)
 {
   learningRate = rate;
 
-  W1 = Matrix(inputNeuron, hiddenNeuron);
-  W2 = Matrix(hiddenNeuron, outputNeuron);
-  B1 = Matrix(1, hiddenNeuron);
-  B2 = Matrix(1, outputNeuron);
+  W1 = Matrix<double>(inputNeuron, hiddenNeuron);
+  W2 = Matrix<double>(hiddenNeuron, outputNeuron);
+  B1 = Matrix<double>(1, hiddenNeuron);
+  B2 = Matrix<double>(1, outputNeuron);
 
   W1 = W1.applyFunction(random);
   W2 = W2.applyFunction(random);
@@ -52,9 +52,9 @@ void init(int inputNeuron, int hiddenNeuron, int outputNeuron, double rate)
   B2 = B2.applyFunction(random);
 }
 
-Matrix computeOutput(vector<double> input)
+Matrix<double> computeOutput(vector<double> input)
 {
-  X = Matrix({input}); // row matrix
+  X = Matrix<double>({input}); // row matrix
   H = X.dot(W1).add(B1).applyFunction(sigmoid);
   Y = H.dot(W2).add(B2).applyFunction(sigmoid);
   return Y;
@@ -62,7 +62,7 @@ Matrix computeOutput(vector<double> input)
 
 void learn(vector<double> expectedOutput)
 {
-  Y2 = Matrix({expectedOutput}); // row matrix
+  Y2 = Matrix<double>({expectedOutput}); // row matrix
 
   // Calculating the partial derivative of J, the error, with respect to W1, B1, W2, B2
   
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
   srand(time(NULL)); // generate random weights
 
   // learning digit recognition (0 ... 9)
-  std::vector<std::vector<double>> inputVector, outputVector;
+  std::vector<std::vector<double> > inputVector, outputVector;
   loadTraining("training.txt", inputVector, outputVector); // load data from file "training.txt"
 
   /*
@@ -123,7 +123,14 @@ int main(int argc, char *argv[])
      10 output neurons
      0.7 learning rate (experimental)
   */
-  init(1024, 15, 10, 0.7);
+  int pixelSize = 32;
+  int inputNeurons = pixelSize*pixelSize;
+  int hiddenNeurons = 15;
+  int outputNeurons = 10;
+  double learningRate = 0.7;
+  init(inputNeurons, hiddenNeurons, outputNeurons, learningRate);
+
+  cout << "Input vector size: " << inputVector.size() << " x " << inputVector[0].size() << endl;
 
   // train 30 iterations
   for (int i=0; i<30; i++)
@@ -138,7 +145,10 @@ int main(int argc, char *argv[])
 
   // test
   cout << "expected output: actual output" << endl;
-  cout << outputVector[0][0] << " ";
+  for (int j=0; j<10; j++)
+  {
+    cout << outputVector[0][j] << " ";
+  }
   cout << ": " << computeOutput(inputVector[0]).applyFunction(stepFunction) << endl; 
   // for (int i=inputVector.size()-10; inputVector.size(); i++)
   // {

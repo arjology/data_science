@@ -9,8 +9,7 @@ from tqdm import tqdm
 
 
 class Betting:
-    def __init__(self, starting_sum: float, bet_fraction: float, p: float):
-        self.p = 1 - p
+    def __init__(self, starting_sum: float, bet_fraction: float):
         self.starting_sum = starting_sum
         self.curr_val = [starting_sum]
         self.bet_fraction = bet_fraction
@@ -28,8 +27,9 @@ class Betting:
         return results
 
     def bet(self, bet_size):
-        p = np.random.rand()
-        if p >= self.p:
+        p = np.random.normal(loc=0.6, scale=0.1)
+        _p = np.random.normal(loc=0.6, scale=0.1)
+        if p >= _p:
             return bet_size
         else:
             return -1.0 * bet_size
@@ -122,7 +122,7 @@ if __name__ == "__main__":
         Q = dict.fromkeys(bf, np.zeros((iters, days+1)))
         for q in tqdm(Q.keys()):
             for i in range(iters):
-                betting = Betting(S, q, p)
+                betting = Betting(S, q)
                 v = betting.run(days)
                 Q[q][i] = v
             _tmp = Q[q].copy()
@@ -137,4 +137,4 @@ if __name__ == "__main__":
             id_vars='Day'
         )
         df_melt['Betting_fraction'] = df_melt['Betting_fraction'].apply(lambda g: str(g*100)+'%')
-        plot(S*.6667, df=df_melt, output_loc=method.__name__ + '.png')
+        plot(S*.1, df=df_melt, output_loc=method.__name__ + '.png')
