@@ -2,160 +2,170 @@
 #include <fstream>
 #include <stdlib.h>
 #include <time.h>
-#include <cmath>
+#include <map>
 
-#include "Matrix.h"
+#include "Network/Network.h"
+#include "ProgressBar.h"
 
 using namespace std;
 
-Matrix<double> X, W1, H, W2, Y, B1, B2, Y2, dJdB1, dJdB2, dJdW1, dJdW2;
-double learningRate;
+#define _DEBUG
 
-double random(double x)
-{
-  return (double)(rand() % 10000 + 1)/10000 - 0.5;
-}
-
-double sigmoid(double x)
-{
-  return 1/(1+exp(-x));
-}
-
-double sigmoidePrime(double x)
-{
-  return exp(-x)/(pow(1+exp(-x), 2));
-}
-
+// Helper functions
 double stepFunction(double x)
 {
-  if(x>0.9){
-    return 1.0;
-  }
-  if (x<0.1){
-    return 0.0;
-  }
-  return x;
+    return x > 0.9 ? 1.0 : x < 0.1 ? 0.0 : x;
 }
 
-void init(int inputNeuron, int hiddenNeuron, int outputNeuron, double rate)
+map<int, double> find_values(vector<double> &positions, vector<int> &values)
 {
-  learningRate = rate;
-
-  W1 = Matrix<double>(inputNeuron, hiddenNeuron);
-  W2 = Matrix<double>(hiddenNeuron, outputNeuron);
-  B1 = Matrix<double>(1, hiddenNeuron);
-  B2 = Matrix<double>(1, outputNeuron);
-
-  W1 = W1.applyFunction(random);
-  W2 = W2.applyFunction(random);
-  B1 = B1.applyFunction(random);
-  B2 = B2.applyFunction(random);
-}
-
-Matrix<double> computeOutput(vector<double> input)
-{
-  X = Matrix<double>({input}); // row matrix
-  H = X.dot(W1).add(B1).applyFunction(sigmoid);
-  Y = H.dot(W2).add(B2).applyFunction(sigmoid);
-  return Y;
-}
-
-void learn(vector<double> expectedOutput)
-{
-  Y2 = Matrix<double>({expectedOutput}); // row matrix
-
-  // Calculating the partial derivative of J, the error, with respect to W1, B1, W2, B2
-  
-  // Computing gradients
-  dJdB2 = Y.subtract(Y2).multiply(H.dot(W2).add(B2).applyFunction(sigmoidePrime));
-  dJdB1 = dJdB2.dot(W2.transpose()).multiply(X.dot(W1).add(B1).applyFunction(sigmoidePrime));
-  dJdW2 = H.transpose().dot(dJdB2);
-  dJdW1 = X.transpose().dot(dJdB1);
-
-  // Update the weights
-  W1 = W1.subtract(dJdW1.multiply(learningRate));
-  W2 = W2.subtract(dJdW2.multiply(learningRate));
-  B1 = B1.subtract(dJdB1.multiply(learningRate));
-  B2 = B2.subtract(dJdB2.multiply(learningRate));
-}
-
-void loadTraining(const char *filename, vector<vector<double>> &input, vector<vector<double>> &output)
-{
-  int trainingSize = 946;
-  input.resize(trainingSize);
-  output.resize(trainingSize);
-
-  ifstream file(filename);
-  if (file)
+  map<int, double> found_values;
+  for (int i=0; i<positions.size(); i++)
   {
-    string line;
-    int n;
-    for (int i=0; i<trainingSize; i++)
+    if (positions[i] > 0)
     {
-      for (int h=0; h<32; h++)
-      {
-        getline(file, line);
-        for (int w=0; w<32; w++)
-        {
-          input[i].push_back(atoi(line.substr(w, 1).c_str()));
-        }
-      }
-      getline(file, line);
-      output[i].resize(10); // Output ranges from 0 - 9
-      n = atoi(line.substr(0, 1).c_str()); // Get the number represented by the array
-      output[i][n] = 1; // Set value at position to 1; other values automatically 0 due to resize
+      found_values.insert(make_pair(values[i], (double)positions[i]));
     }
   }
-  file.close();
+  return found_values;
+}
+
+void printValues(map<int, double> &results)
+{
+    std::map<int, double>::iterator it = results.begin();
+    while(it != results.end())
+    {
+      double pct = (double)100.0*it->second;
+      cout << it->first << " :: " << ceil(pct* 100.0)/100.0 << "%" << endl;
+        it++;
+    }
+}
+
+void loadTraining(const char *filename, vector<vector<double> > &input, vector<vector<double> > &output)
+{
+    int trainingSize = 946;
+    input.resize(trainingSize);
+    output.resize(trainingSize);
+
+    ifstream file(filename);
+    if (file)
+    {
+        string line;
+        int n;
+        for (int i=0; i<trainingSize; i++)
+        {
+            for (int h=0; h<32; h++)
+            {
+                getline(file, line);
+                for (int w=0; w<32; w++)
+                {
+                    input[i].push_back(atoi(line.substr(w, 1).c_str()));
+                }
+            }
+            getline(file, line);
+            output[i].resize(10); // Output ranges from 0 - 9
+            n = atoi(line.substr(0, 1).c_str()); // Get the number represented by the array
+            output[i][n] = 1; // Set value at position to 1; other values automatically 0 due to resize
+        }
+    }
+    file.close();
 }
 
 int main(int argc, char *argv[])
 {
-  srand(time(NULL)); // generate random weights
+    // learning digit recognition (0 ... 9)
+    std::vector<std::vector<double> > inputVector, outputVector;
+    loadTraining("training.txt", inputVector, outputVector); // load data from file "training.txt"
 
-  // learning digit recognition (0 ... 9)
-  std::vector<std::vector<double> > inputVector, outputVector;
-  loadTraining("training.txt", inputVector, outputVector); // load data from file "training.txt"
-
-  /*
-     32 * 32 = 1024 input neurons
-     15 hidden neurons (experimental)
-     10 output neurons
-     0.7 learning rate (experimental)
-  */
-  int pixelSize = 32;
-  int inputNeurons = pixelSize*pixelSize;
-  int hiddenNeurons = 15;
-  int outputNeurons = 10;
-  double learningRate = 0.7;
-  init(inputNeurons, hiddenNeurons, outputNeurons, learningRate);
-
-  cout << "Input vector size: " << inputVector.size() << " x " << inputVector[0].size() << endl;
-
-  // train 30 iterations
-  for (int i=0; i<30; i++)
-  {
-    for (int j=0; j<inputVector.size()-10; j++) // testing on last 10 examples
+    /*
+         32 * 32 = 1024 input neurons
+         15 hidden neurons (experimental)
+         10 output neurons
+         0.7 learning rate (experimental)
+    */
+    int pixelSize = 32;
+    int inputNeurons = pixelSize*pixelSize;
+    int hiddenNeurons = 15;
+    int outputNeurons = 10;
+    int testingSize = 10;
+    int trainingSize = inputVector.size() - testingSize;
+    int numIterations = 30;
+    #ifdef _DEBUG
+    numIterations = 3;
+    #endif
+    double learningRate = 0.7;
+    vector<int> digit_values = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    cout << "Input vector size: " << inputVector.size() << " x " << inputVector[0].size() << endl;
+    cout << "Numbers pixel size: " << pixelSize
+             << "\nInput neurons: " << inputNeurons
+             << "\nHidden neurons: " << hiddenNeurons
+             << "\nOutput neurons: " << outputNeurons
+             << "\nLearning rate: " << learningRate
+             << "\nTraining size: " << trainingSize
+             << "\nTesting size: " << testingSize
+             << "\nNumber of training iterations: " << numIterations
+             << endl;
+    Network net({inputNeurons, hiddenNeurons, outputNeurons}, learningRate);
+    // train iterations
+    double pct_complete = 0.0;
+    for (int i=0; i<numIterations; i++)
     {
-      computeOutput(inputVector[j]);
-      learn(outputVector[j]);
+        for (int j=0; j<inputVector.size()-10; j++) // testing on last 10 examples
+        {
+            net.computeOutput(inputVector[j]);
+            net.learn(outputVector[j]);
+        }
+        pct_complete = (i+1)/(float)numIterations;
+        pbar(pct_complete);
     }
-    cout << "#" << i + 1 << "/30" << endl;
-  }
+    cout << endl;
+    
+    // start_test
+    #ifdef _DEBUG // or #ifndef NDEBUG
+    cout << "expected output: actual output" << endl;
+    for (int j=0; j<10; j++)
+    {
+        cout << outputVector[0][j] << " ";
+    }
+    Matrix<double> rs = net.computeOutput(inputVector[0]).applyFunction(stepFunction); 
+    cout << ": " << rs << endl; 
+    map<int, double> actual = find_values(outputVector[0], digit_values);
+    cout << "Actual values:" << endl;
+    printValues(actual); 
+    vector<double> pred = rs.row(0);
+    map<int, double> predicted = find_values(pred, digit_values);
+    cout << "Predicted values:" << endl;
+    printValues(predicted);
+    cout << endl;
+    // end_test
+    #endif
 
-  // test
-  cout << "expected output: actual output" << endl;
-  for (int j=0; j<10; j++)
-  {
-    cout << outputVector[0][j] << " ";
-  }
-  cout << ": " << computeOutput(inputVector[0]).applyFunction(stepFunction) << endl; 
-  // for (int i=inputVector.size()-10; inputVector.size(); i++)
-  // {
-  //   for (int j=0; j<10; j++)
-  //   {
-  //     cout << outputVector[i][j] << " ";
-  //   }
-  //   cout << ": " << computeOutput(inputVector[i]).applyFunction(stepFunction) << endl;
-  // }
+    // test 
+    #ifndef _DEBUG
+    for (int i=trainingSize; i<inputVector.size(); i++)
+    {
+        cout << "#" << i - trainingSize + 1 << ":\t";
+        for (int j=0; j<testingSize; j++)
+        {
+            cout << outputVector[i][j] << " ";
+        }
+        Matrix<double> rs = net.computeOutput(inputVector[i]).applyFunction(stepFunction);
+        cout << ": " << rs;
+
+        map<int, double> actual = find_values(outputVector[i], digit_values);
+        cout << "Actual values:" << endl;
+        printValues(actual); 
+
+        vector<double> pred = rs.row(0);
+        map<int, double> predicted = find_values(pred, digit_values);
+        cout << "Predicted values:" << endl;
+        printValues(predicted);
+        cout << endl;
+    }
+    cout << endl << "Saving parameters...";
+    net.saveNetworkParams("params.txt");
+    cout << "ok!" << endl;
+
+    // net.loadNetworkParams("params.txt"); or Network net("params.txt");
+    #endif
 }
