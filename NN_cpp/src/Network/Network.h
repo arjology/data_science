@@ -24,6 +24,8 @@ public:
     std::vector<Matrix<double> > W;
     std::vector<Matrix<double> > B;
 
+    void plotProgress(int i, std::ofstream &X, std::ofstream &Y);
+
 private:
     std::vector<Matrix<double> > H;
     std::vector<Matrix<double> > dEdW;

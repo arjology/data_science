@@ -1,171 +1,198 @@
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
-#include <time.h>
 #include <map>
+#include <chrono>
 
 #include "Network/Network.h"
-#include "ProgressBar.h"
+#include "HelperFunctions.h"
 
 using namespace std;
 
-#define _DEBUG
+// #define _DEBUG
 
-// Helper functions
-double stepFunction(double x)
+void loadTraining(const char *train_filename,
+                  const char *test_filename,
+                  vector<vector<double> > &input,
+                  vector<vector<double> > &output,
+                  int width,
+                  int height,
+                  int trainingSize,
+                  int testingSize)
 {
-    return x > 0.9 ? 1.0 : x < 0.1 ? 0.0 : x;
-}
+    int totalSize = trainingSize + testingSize;
+    input.resize(totalSize);
+    output.resize(totalSize);
 
-map<int, double> find_values(vector<double> &positions, vector<int> &values)
-{
-  map<int, double> found_values;
-  for (int i=0; i<positions.size(); i++)
-  {
-    if (positions[i] > 0)
+    string line;
+    int n;
+    ifstream train_file(train_filename);
+    if (train_file)
     {
-      found_values.insert(make_pair(values[i], (double)positions[i]));
-    }
-  }
-  return found_values;
-}
-
-void printValues(map<int, double> &results)
-{
-    std::map<int, double>::iterator it = results.begin();
-    while(it != results.end())
-    {
-      double pct = (double)100.0*it->second;
-      cout << it->first << " :: " << ceil(pct* 100.0)/100.0 << "%" << endl;
-        it++;
-    }
-}
-
-void loadTraining(const char *filename, vector<vector<double> > &input, vector<vector<double> > &output)
-{
-    int trainingSize = 946;
-    input.resize(trainingSize);
-    output.resize(trainingSize);
-
-    ifstream file(filename);
-    if (file)
-    {
-        string line;
-        int n;
         for (int i=0; i<trainingSize; i++)
         {
-            for (int h=0; h<32; h++)
+            for (int h=0; h<height; h++)
             {
-                getline(file, line);
-                for (int w=0; w<32; w++)
+                getline(train_file, line);
+                for (int w=0; w<width; w++)
                 {
                     input[i].push_back(atoi(line.substr(w, 1).c_str()));
                 }
             }
-            getline(file, line);
+            getline(train_file, line);
             output[i].resize(10); // Output ranges from 0 - 9
             n = atoi(line.substr(0, 1).c_str()); // Get the number represented by the array
             output[i][n] = 1; // Set value at position to 1; other values automatically 0 due to resize
         }
     }
-    file.close();
+    train_file.close();
+
+    ifstream test_file(test_filename);
+    if (test_file)
+    {
+        for (int i=trainingSize; i<totalSize; i++)
+        {
+            for (int h=0; h<height; h++)
+            {
+                getline(test_file, line);
+                for (int w=0; w<width; w++)
+                {
+                    input[i].push_back(atoi(line.substr(w, 1).c_str()));
+                }
+            }
+            getline(test_file, line);
+            output[i].resize(10); // Output ranges from 0 - 9
+            n = atoi(line.substr(0, 1).c_str()); // Get the number represented by the array
+            output[i][n] = 1; // Set value at position to 1; other values automatically 0 due to resize
+        }
+    }
+    test_file.close();
 }
 
 int main(int argc, char *argv[])
-{
-    // learning digit recognition (0 ... 9)
-    std::vector<std::vector<double> > inputVector, outputVector;
-    loadTraining("training.txt", inputVector, outputVector); // load data from file "training.txt"
-
-    /*
-         32 * 32 = 1024 input neurons
-         15 hidden neurons (experimental)
-         10 output neurons
-         0.7 learning rate (experimental)
-    */
-    int pixelSize = 32;
+{ 
+    #ifdef _DEBUG
+    int testingSize = 2;
+    int trainingSize = 10;
+    int numIterations = 100;
+    #endif
+    #ifndef _DEBUG
+    int testingSize = 10000;
+    int trainingSize = 60000;
+    int numIterations = 100;
+    #endif
+    int pixelSize = 28;
     int inputNeurons = pixelSize*pixelSize;
     int hiddenNeurons = 15;
     int outputNeurons = 10;
-    int testingSize = 10;
-    int trainingSize = inputVector.size() - testingSize;
-    int numIterations = 30;
-    #ifdef _DEBUG
-    numIterations = 3;
-    #endif
+
+    vector<vector<double> > inputVector, outputVector;
+    loadTraining("../data/mnist_train.txt", "../data/mnist_test.txt",
+                 inputVector, outputVector,
+                 pixelSize, pixelSize,
+                 trainingSize, testingSize
+    );
+    
     double learningRate = 0.7;
+    double dropoutRate = 0.4;
     vector<int> digit_values = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     cout << "Input vector size: " << inputVector.size() << " x " << inputVector[0].size() << endl;
     cout << "Numbers pixel size: " << pixelSize
              << "\nInput neurons: " << inputNeurons
              << "\nHidden neurons: " << hiddenNeurons
              << "\nOutput neurons: " << outputNeurons
-             << "\nLearning rate: " << learningRate
              << "\nTraining size: " << trainingSize
              << "\nTesting size: " << testingSize
              << "\nNumber of training iterations: " << numIterations
+             << "\nLearning rate: " << learningRate
+             << "\nDropout rate: " << dropoutRate
              << endl;
     Network net({inputNeurons, hiddenNeurons, outputNeurons}, learningRate);
     // train iterations
     double pct_complete = 0.0;
+    ofstream errorFile("../data/error.txt");
+    auto t1 = chrono::high_resolution_clock::now();
+    auto t2 = chrono::high_resolution_clock::now();
+    auto runtime = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
+    Matrix<double> rs;
+    vector<double> curr_pred;
+    float r;
+
+    cout << "*** Training network..." << endl;
     for (int i=0; i<numIterations; i++)
     {
-        for (int j=0; j<inputVector.size()-10; j++) // testing on last 10 examples
+        double err = 0.0;
+        for (int j=0; j<trainingSize; j++)
         {
-            net.computeOutput(inputVector[j]);
-            net.learn(outputVector[j]);
+            r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+            if (r < 1-dropoutRate)
+            {
+                rs = net.computeOutput(inputVector[j]);
+                net.learn(outputVector[j]);
+
+                if (j%100==0)
+                {
+                    rs = rs.applyFunction(stepFunction);
+                    curr_pred = rs.row(0);
+                    err += currentError(curr_pred, outputVector[j]);
+                    t2 = chrono::high_resolution_clock::now();
+                    runtime = chrono::duration_cast<chrono::duration<double>>(t2 - t1); 
+                    pct_complete = (i*trainingSize+j+1)/(float)(numIterations*trainingSize);
+                    pbar(pct_complete, err, runtime.count(), i);
+                }
+            }
         }
-        pct_complete = (i+1)/(float)numIterations;
-        pbar(pct_complete);
+        if (i%10==0)
+        {
+            plotError(errorFile, i, err);
+        }
     }
+    errorFile.close();
     cout << endl;
     
-    // start_test
-    #ifdef _DEBUG // or #ifndef NDEBUG
-    cout << "expected output: actual output" << endl;
-    for (int j=0; j<10; j++)
-    {
-        cout << outputVector[0][j] << " ";
-    }
-    Matrix<double> rs = net.computeOutput(inputVector[0]).applyFunction(stepFunction); 
-    cout << ": " << rs << endl; 
-    map<int, double> actual = find_values(outputVector[0], digit_values);
-    cout << "Actual values:" << endl;
-    printValues(actual); 
-    vector<double> pred = rs.row(0);
-    map<int, double> predicted = find_values(pred, digit_values);
-    cout << "Predicted values:" << endl;
-    printValues(predicted);
-    cout << endl;
-    // end_test
-    #endif
-
+    #ifdef _DEBUG
     // test 
-    #ifndef _DEBUG
+    cout << "*** Inspecting predictions of testing samples..." << endl;
     for (int i=trainingSize; i<inputVector.size(); i++)
     {
         cout << "#" << i - trainingSize + 1 << ":\t";
-        for (int j=0; j<testingSize; j++)
+        for (int j=0; j<10; j++)
         {
             cout << outputVector[i][j] << " ";
         }
         Matrix<double> rs = net.computeOutput(inputVector[i]).applyFunction(stepFunction);
         cout << ": " << rs;
 
-        map<int, double> actual = find_values(outputVector[i], digit_values);
+        map<int, double> actual = findValues(outputVector[i], digit_values);
         cout << "Actual values:" << endl;
         printValues(actual); 
 
         vector<double> pred = rs.row(0);
-        map<int, double> predicted = find_values(pred, digit_values);
+        map<int, double> predicted = findValues(pred, digit_values);
         cout << "Predicted values:" << endl;
         printValues(predicted);
         cout << endl;
     }
-    cout << endl << "Saving parameters...";
-    net.saveNetworkParams("params.txt");
-    cout << "ok!" << endl;
+    #endif
 
+    #ifndef _DEBUG
+    cout << "*** Inspecting predictions of testing samples..." << endl;
+    int correctPred = 0;
+    for (int i=trainingSize; i<inputVector.size(); i++)
+    {
+        Matrix<double> rs = net.computeOutput(inputVector[i]).applyFunction(stepFunction);
+        vector<double> pred = rs.row(0);
+        correctPred += maxValuesMatch(pred, outputVector[i]);
+        pbar((double)i/(double)testingSize);
+    }
+    double result = (double)correctPred/(double)testingSize; 
+    cout << "Testing results:\n"
+         << "\t" << correctPred << "/" << testingSize << " correct"
+         << endl;
+
+    cout << endl << "Saving parameters...";
+    net.saveNetworkParams("../data/params.txt");
+    cout << "ok!" << endl;
     // net.loadNetworkParams("params.txt"); or Network net("params.txt");
     #endif
 }

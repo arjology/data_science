@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <fstream>
 #include "Network.h"
 
 Network::Network(std::vector<int> neurons, double learningRate)
@@ -167,4 +168,19 @@ double Network::sigmoid(double x)
 double Network::sigmoidePrime(double x)
 {
     return exp(-x)/(pow(1+exp(-x), 2));
+}
+
+void Network::plotProgress(int i, std::ofstream &X, std::ofstream &Y)
+{
+    for (int k=0; k<W.size(); k++)
+    {
+        for (int h=0; h<W[k].getHeight(); h++)
+        {
+            for (int w=0; w<W[k].getWidth(); w++)
+            {
+                X << i << std::endl;
+                Y << W[k](h,w) << std::endl;
+            }
+        }
+    }
 }
